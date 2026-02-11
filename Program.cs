@@ -40,6 +40,7 @@ public class Program
 
         // アプリケーションサービス
         builder.Services.AddScoped<ExcelParseService>();
+        builder.Services.AddScoped<LockService>();
 
         var app = builder.Build();
 

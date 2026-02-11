@@ -3,6 +3,9 @@
 @inject KinmuReport.Models.AttendanceContext DbContext
 @inject NavigationManager Navigation
 
+@using Microsoft.AspNetCore.Components.Authorization
+
+
 <PageTitle>勤怠明細</PageTitle>
 
 <h2 class="mb-4">
@@ -77,6 +80,9 @@
 }
 
 @code {
+    [CascadingParameter] Task<AuthenticationState> AuthState { get; set; } = default!;
+
+
     [Parameter] public string empId { get; set; } = "";
     [Parameter] public int yearMonth { get; set; }
 
@@ -85,6 +91,27 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthState;
+        var user = authState.User;
+        var currentUserId = user.FindFirst("社員番号")?.Value ?? "";
+        var currentRole = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+        var currentGroup = user.FindFirst("グループコード")?.Value ?? "";
+
+        // 権限チェック
+        var allowed = currentRole switch
+        {
+            "管理者" => true,
+            "グループ管理者" => await DbContext.社員s
+                .AnyAsync(e => e.社員番号 == empId && e.グループコード == currentGroup),
+            _ => empId == currentUserId
+        };
+
+        if (!allowed)
+        {
+            Navigation.NavigateTo("/attendance");
+            return;
+        }
+
         employee = await DbContext.社員s.FindAsync(empId);
 
         records = await DbContext.勤怠s
@@ -92,6 +119,7 @@
             .OrderBy(k => k.勤務日)
             .ToListAsync();
     }
+
 
     void GoBack()
     {

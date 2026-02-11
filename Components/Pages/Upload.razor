@@ -1,9 +1,12 @@
 @page "/upload"
 @using KinmuReport.Services
 @using KinmuReport.Models
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @inject ExcelParseService Parser
 @inject AttendanceContext Context
+@inject LockService LockService
+
 
 <PageTitle>アップロード</PageTitle>
 
@@ -92,9 +95,23 @@
 @code {
     private (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト)? parseResult;
     private string? message;
+	private bool isError = false;
 
-	private int 年 => parseResult?.対象年月 / 100 ?? 0;
+    private int 年 => parseResult?.対象年月 / 100 ?? 0;
     private int 月 => parseResult?.対象年月 % 100 ?? 0;
+
+    string currentUserId = "";
+
+    [CascadingParameter] Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState;
+		var user = authState.User;
+        currentUserId = user.FindFirst("社員番号")?.Value ?? "";
+    }
+
+
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
@@ -117,7 +134,17 @@
 
     private async Task SaveToDb()
     {
+
         if (parseResult is null) return;
+
+        // ロックチェック
+        var lockRecord = await LockService.GetLock(parseResult?.社員番号 ?? "", parseResult?.対象年月 ?? 0);
+        if (lockRecord != null && lockRecord.ロック者番号 != currentUserId)
+        {
+            message = $"この期間は {lockRecord.ロック者番号Navigation?.社員名 ?? lockRecord.ロック者番号} がロック中のためアップロードできません。";
+            isError = true;
+            return;
+        }
 
         try
         {
@@ -127,6 +154,8 @@
             await Context.勤怠s
                 .Where(k => k.社員番号 == 社員番号 && k.対象年月 == 対象年月)
                 .ExecuteDeleteAsync();
+
+            Context.ChangeTracker.Clear();
 
             Context.勤怠s.AddRange(勤怠リスト);
             await Context.SaveChangesAsync();

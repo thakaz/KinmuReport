@@ -4,6 +4,8 @@
 @using System.Security.Claims
 @inject KinmuReport.Models.AttendanceContext DbContext
 @inject NavigationManager Navigation
+@inject KinmuReport.Services.LockService LockService
+
 
 <PageTitle>提出状況一覧</PageTitle>
 
@@ -47,6 +49,8 @@
                             <th class="text-end">合計</th>
                             <th>提出日時</th>
                             <th class="text-end">版数</th>
+                            <th>ロック</th>
+
                         </tr>
                     </thead>
                     <tbody>
@@ -71,6 +75,15 @@
                                 <td class="text-end">@s.合計?.ToString("0.00")</td>
                                 <td>@s.提出日時?.ToString("yyyy/MM/dd HH:mm")</td>
                                 <td class="text-end">@s.版数</td>
+                                <td>@if (s.ロック者名 != null)
+                                    {
+                                        <span class="badge bg-warning text-dark"> <i class="bi bi-lock-fill me-1"></i>@s.ロック者名</span>    
+                                        <AuthorizeView Roles="管理者">
+                                            <button class="btn btn-outline-danger btn-sm" 
+                                            @onclick="()=>ForceRelease(s.社員番号)" @onclick:stopPropagation="true">解除</button>
+                                        </AuthorizeView>
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -144,10 +157,20 @@
             .Where(u => empIds.Contains(u.社員番号) && u.対象年月 == 対象年月)
             .ToListAsync();
 
+        var locks = await DbContext.ロックs
+            .Include(l => l.ロック者番号Navigation)
+            .Where(l => empIds.Contains(l.社員番号) && l.対象年月 == 対象年月)
+            .ToListAsync();
+
         summaries = employees.Select(emp =>
         {
             var att = attendances.FirstOrDefault(a => a.社員番号 == emp.社員番号);
             var upl = uploads.FirstOrDefault(u => u.社員番号 == emp.社員番号);
+
+            var lck = locks.FirstOrDefault(l => l.社員番号 == emp.社員番号);
+            // タイムアウトチェック
+            var isLocked = lck != null && (DateTime.Now - lck.ロック日時) <= TimeSpan.FromDays(1);
+
             return new EmployeeSummary
             {
                 社員番号 = emp.社員番号,
@@ -158,9 +181,16 @@
                 深夜計 = att?.深夜計,
                 合計 = att?.合計,
                 提出日時 = upl?.アップロード日時,
-                版数 = upl?.sp版数
+                版数 = upl?.sp版数,
+                ロック者名 = isLocked ? lck!.ロック者番号Navigation?.社員名 : null
             };
         }).ToList();
+    }
+
+    async Task ForceRelease(string 社員番号)
+    {
+        await LockService.Release(社員番号, selectedYearMonth, currentUserId, currentRole);
+        await Search();
     }
 
     void GoToDetail(string 社員番号)
@@ -179,5 +209,6 @@
         public decimal? 合計 { get; set; }
         public DateTime? 提出日時 { get; set; }
         public int? 版数 { get; set; }
+        public string ロック者名 { get; set; } = "";
     }
 }

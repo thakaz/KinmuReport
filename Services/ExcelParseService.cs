@@ -45,12 +45,14 @@ public class ExcelParseService
             var endCell = dataSheet.Cell(row, 4);
             if (!startCell.IsEmpty() && startCell.Value.IsTimeSpan)
             {
-                var t = TimeOnly.FromTimeSpan(startCell.GetValue<TimeSpan>());
+                var ts = startCell.GetValue<TimeSpan>();
+                var t = TimeOnly.FromTimeSpan(new TimeSpan(ts.Hours % 24, ts.Minutes, ts.Seconds));
                 record.出勤日時 = 勤務日.ToDateTime(t);
             }
             if (!endCell.IsEmpty() && endCell.Value.IsTimeSpan)
             {
-                var t = TimeOnly.FromTimeSpan(endCell.GetValue<TimeSpan>());
+                var ts = endCell.GetValue<TimeSpan>();
+                var t = TimeOnly.FromTimeSpan(new TimeSpan(ts.Hours % 24, ts.Minutes, ts.Seconds));
                 record.退勤日時 = 勤務日.ToDateTime(t);
 
                 if (record.出勤日時.HasValue && record.退勤日時 < record.出勤日時)

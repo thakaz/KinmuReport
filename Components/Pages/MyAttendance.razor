@@ -133,6 +133,7 @@
         currentGroup = authState.User.FindFirst("グループコード")?.Value ?? "";
 
         currentUserId = authState.User.FindFirst("社員番号")?.Value ?? "";
+		selectedEmployeeId = currentUserId;
 
         visibleEmployees = currentRole switch
         {
