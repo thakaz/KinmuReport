@@ -1,7 +1,16 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>勤務報告Excel管理</h1>
 
-Welcome to your new app.
+<AuthorizeView>
+	<Authorized>
+		<p>ようこそ、@context.User.Identity?.Name さん！</p>
+		<p>権限: @context.User.FindFirst(ClaimTypes.Role)?.Value</p>
+		<p>社員番号: @context.User.FindFirst("社員番号")?.Value</p>
+		<p>グループ：@context.User.FindFirst("グループコード")?.Value</p>
+	</Authorized>
+</AuthorizeView>
