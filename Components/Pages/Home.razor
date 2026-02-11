@@ -1,16 +1,64 @@
-﻿@page "/"
+@page "/"
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 
 <PageTitle>Home</PageTitle>
 
-<h1>勤務報告Excel管理</h1>
+<h2 class="mb-4">
+    <i class="bi bi-speedometer2 me-2"></i>ダッシュボード
+</h2>
 
 <AuthorizeView>
-	<Authorized>
-		<p>ようこそ、@context.User.Identity?.Name さん！</p>
-		<p>権限: @context.User.FindFirst(ClaimTypes.Role)?.Value</p>
-		<p>社員番号: @context.User.FindFirst("社員番号")?.Value</p>
-		<p>グループ：@context.User.FindFirst("グループコード")?.Value</p>
-	</Authorized>
+    <Authorized>
+        <div class="row g-3">
+            <div class="col-md-6 col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-person-circle me-1"></i> ユーザー情報
+                        </h5>
+                        <table class="table table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <th class="text-muted" style="width:40%">氏名</th>
+                                    <td>@context.User.Identity?.Name</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">社員番号</th>
+                                    <td>@context.User.FindFirst("社員番号")?.Value</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">権限</th>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            @context.User.FindFirst(ClaimTypes.Role)?.Value
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted">グループ</th>
+                                    <td>@context.User.FindFirst("グループコード")?.Value</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-lightning-fill me-1"></i> クイックアクション
+                        </h5>
+                        <div class="d-grid gap-2">
+                            <a href="upload" class="btn btn-outline-primary">
+                                <i class="bi bi-upload me-1"></i> Excelアップロード
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Authorized>
 </AuthorizeView>

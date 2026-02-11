@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using KinmuReport.Components;
+using KinmuReport.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace KinmuReport;
 
@@ -9,32 +10,36 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
+        // Blazor
         builder.Services.AddRazorComponents()
-            .AddInteractiveServerComponents();
+            .AddInteractiveServerComponents()
+            .AddHubOptions(options =>
+            {
+                options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10MB（Excel アップロード用）
+            });
 
-        //ログイン用のRazorPagesを追加
+        // Razor Pages（ログイン・ログアウト用）
         builder.Services.AddRazorPages();
 
+        // DB
         builder.Services.AddDbContext<KinmuReport.Models.AttendanceContext>(
             options => options.UseNpgsql(
                 builder.Configuration.GetConnectionString("AttendanceContext") ??
                 "Host=localhost;Port=5433;Database=attendance;Username=postgres;Password=postgres"
             ));
 
-
+        // 認証・認可
         builder.Services.AddAuthentication("Cookies")
             .AddCookie("Cookies", options =>
             {
                 options.LoginPath = "/login";
                 options.LogoutPath = "/logout";
             });
-
-
         builder.Services.AddAuthorization();
-
         builder.Services.AddCascadingAuthenticationState();
 
+        // アプリケーションサービス
+        builder.Services.AddScoped<ExcelParseService>();
 
         var app = builder.Build();
 

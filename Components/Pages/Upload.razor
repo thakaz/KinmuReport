@@ -1,0 +1,137 @@
+@page "/upload"
+@using KinmuReport.Services
+@using KinmuReport.Models
+@inject ExcelParseService Parser
+@inject AttendanceContext Context
+
+<PageTitle>アップロード</PageTitle>
+
+<h2 class="mb-4">
+    <i class="bi bi-upload me-2"></i>勤務報告アップロード
+</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Excelファイルを選択</h5>
+        <InputFile OnChange="HandleFileSelected" accept=".xlsx,.xlsm" class="form-control" />
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    var alertClass = message.Contains("エラー") ? "alert-danger" : "alert-success";
+    <div class="alert @alertClass alert-dismissible fade show" role="alert">
+        <i class="bi @(message.Contains("エラー") ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-1"></i>
+        @message
+        <button type="button" class="btn-close" @onclick="() => message = null"></button>
+    </div>
+}
+
+@if (parseResult is not null)
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-table me-1"></i> パース結果プレビュー
+            </h5>
+            <span class="badge bg-secondary">@parseResult.Value.勤怠リスト.Count 件</span>
+        </div>
+        <div class="card-body">
+            <p class="mb-3">
+                <span class="badge bg-info text-dark me-2">
+                    <i class="bi bi-person me-1"></i>@parseResult.Value.社員番号
+                </span>
+                <span class="badge bg-info text-dark">
+                    <i class="bi bi-calendar me-1"></i>@parseResult.Value.年 年 @parseResult.Value.月 月
+                </span>
+            </p>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-sm align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>勤務日</th>
+                            <th>出勤</th>
+                            <th>退勤</th>
+                            <th class="text-end">所定内</th>
+                            <th class="text-end">残業</th>
+                            <th class="text-end">深夜</th>
+                            <th class="text-end">合計</th>
+                            <th>区分</th>
+                            <th>備考</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in parseResult.Value.勤怠リスト)
+                        {
+                            <tr>
+                                <td>@r.勤務日</td>
+                                <td>@r.出勤日時?.ToString("HH:mm")</td>
+                                <td>@r.退勤日時?.ToString("HH:mm")</td>
+                                <td class="text-end">@r.所定内時間</td>
+                                <td class="text-end">@r.残業時間</td>
+                                <td class="text-end">@r.深夜残業時間</td>
+                                <td class="text-end">@r.合計時間</td>
+                                <td>@r.勤怠区分</td>
+                                <td>@r.備考</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button class="btn btn-primary" @onclick="SaveToDb">
+                <i class="bi bi-database-fill-add me-1"></i> DB保存
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private (string 社員番号, int 年, int 月, List<勤怠> 勤怠リスト)? parseResult;
+    private string? message;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        message = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            ms.Position = 0;
+
+            parseResult = Parser.ParseExcel(ms);
+        }
+        catch (Exception ex)
+        {
+            message = $"エラー: {ex.Message}";
+            parseResult = null;
+        }
+    }
+
+    private async Task SaveToDb()
+    {
+        if (parseResult is null) return;
+
+        try
+        {
+            var (社員番号, 年, 月, 勤怠リスト) = parseResult.Value;
+
+            var existing = Context.勤怠s
+                .Where(k => k.社員番号 == 社員番号 && 勤怠リスト.Select(r => r.勤務日).Contains(k.勤務日));
+            Context.勤怠s.RemoveRange(existing);
+
+            Context.勤怠s.AddRange(勤怠リスト);
+            await Context.SaveChangesAsync();
+
+            message = $"{勤怠リスト.Count}件を保存しました。";
+            parseResult = null;
+        }
+        catch (Exception ex)
+        {
+            message = $"保存エラー: {ex.Message}";
+        }
+    }
+}
