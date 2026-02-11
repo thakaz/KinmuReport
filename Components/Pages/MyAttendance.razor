@@ -1,0 +1,226 @@
+﻿@page "/my-attendance"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@inject KinmuReport.Models.AttendanceContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>個人年間サマリー</PageTitle>
+
+<h2 class="mb-4">
+    <i class="bi bi-person-lines-fill me-2"></i>個人年間サマリー
+</h2>
+
+@* ── 検索条件 ── *@
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-auto">
+                <label class="form-label">年度</label>
+                <select class="form-select" @bind="selectedYear">
+                    @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 2; y--)
+                    {
+                        <option value="@y">@y</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label">締め日</label>
+                <select class="form-select" @bind="closingType">
+                    <option value="15">15日締め</option>
+                    <option value="末">月末締め</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" @onclick="Search">
+                    <i class="bi bi-search me-1"></i>検索
+                </button>
+            </div>
+
+            <AuthorizeView Roles="管理者,グループ管理者">
+    <div class="col-auto">
+        <label class="form-label">社員</label>
+        <select class="form-select" @bind="selectedEmployeeId">            
+            @foreach(var emp in visibleEmployees){                
+            <option value ="@emp.社員番号">@emp.社員名</option>            
+            }
+        </select>
+    </div>
+</AuthorizeView>
+
+        </div>
+    </div>
+</div>
+
+@* ── 結果テーブル ── *@
+@if (monthlySummaries != null)
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>対象月</th>
+                            <th>期間</th>
+                            <th class="text-end">所定内計</th>
+                            <th class="text-end">残業計</th>
+                            <th class="text-end">深夜計</th>
+                            <th class="text-end">合計</th>
+                            <th>状態</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in monthlySummaries)
+                        {
+                            <tr style="cursor: pointer" @onclick="() => GoToDetail(s.対象年月)">
+                                <td>@(s.対象年月 / 100)/@(s.対象年月 % 100)</td>
+                                <td class="text-muted">@s.期間</td>
+                                <td class="text-end">@s.所定内計?.ToString("0.00")</td>
+                                <td class="text-end">@s.残業計?.ToString("0.00")</td>
+                                <td class="text-end">@s.深夜計?.ToString("0.00")</td>
+                                <td class="text-end">@s.合計?.ToString("0.00")</td>
+                                <td>
+                                    @if (s.提出済み)
+                                    {
+                                        <span class="badge bg-success">提出済</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">未提出</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td colspan="2">年間合計</td>
+                            <td class="text-end">@monthlySummaries.Sum(s => s.所定内計 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@monthlySummaries.Sum(s => s.残業計 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@monthlySummaries.Sum(s => s.深夜計 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@monthlySummaries.Sum(s => s.合計 ?? 0).ToString("0.00")</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    [CascadingParameter] Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    int selectedYear = DateTime.Now.Year;
+    string closingType = "15";
+    string currentUserId = "";
+
+
+    string currentRole = "";
+    string currentGroup = "";
+    string selectedEmployeeId = "";
+    List<KinmuReport.Models.社員> visibleEmployees = new();
+
+    List<MonthlySummary> monthlySummaries = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState;
+
+        currentRole = authState.User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+        currentGroup = authState.User.FindFirst("グループコード")?.Value ?? "";
+
+        currentUserId = authState.User.FindFirst("社員番号")?.Value ?? "";
+
+        visibleEmployees = currentRole switch
+        {
+            "管理者" => await DbContext.社員s.OrderBy(e => e.社員番号).ToListAsync(),
+            "グループ管理者" => await DbContext.社員s
+                .Where(e => e.グループコード == currentGroup)
+                .OrderBy(e => e.社員番号).ToListAsync(),
+            _ => await DbContext.社員s
+                .Where(e => e.社員番号 == currentUserId)
+                .OrderBy(e => e.社員番号).ToListAsync()
+        };
+
+        await Search();
+    }
+
+    async Task Search()
+    {
+        // 12ヶ月分の枠を生成（4月始まり）
+        var months = Enumerable.Range(0, 12)
+            .Select(i =>
+            {
+                var d = new DateTime(selectedYear, 4, 1).AddMonths(i);
+                return d.Year * 100 + d.Month;
+            }).ToList();
+
+        // 年間の勤怠データを一括取得
+        var allRecords = await DbContext.勤怠s
+            .Where(k => k.社員番号 == selectedEmployeeId && months.Contains(k.対象年月))
+            .ToListAsync();
+
+        // アップロード履歴
+        var uploads = await DbContext.アップロード履歴s
+            .Where(u => u.社員番号 == selectedEmployeeId && months.Contains(u.対象年月))
+            .ToListAsync();
+
+        monthlySummaries = months.Select(ym =>
+        {
+            var 年 = ym / 100;
+            var 月 = ym % 100;
+
+            // 締め日に応じて勤務日でフィルタ
+            List<KinmuReport.Models.勤怠> filtered;
+            string 期間;
+            if (closingType == "15")
+            {
+                // 15日締め: そのままDBの対象年月で集約
+                filtered = allRecords.Where(k => k.対象年月 == ym).ToList();
+                var from = new DateOnly(年, 月, 1).AddMonths(-1).AddDays(15);
+                var to = new DateOnly(年, 月, 15);
+                期間 = $"{from:MM/dd}〜{to:MM/dd}";
+            }
+            else
+            {
+                // 月末締め: 勤務日ベースで当月1日〜末日を切り出す
+                var fromDate = new DateOnly(年, 月, 1);
+                var toDate = fromDate.AddMonths(1).AddDays(-1);
+                filtered = allRecords.Where(k => k.勤務日 >= fromDate && k.勤務日 <= toDate).ToList();
+                期間 = $"{fromDate:MM/dd}〜{toDate:MM/dd}";
+            }
+
+            var upl = uploads.FirstOrDefault(u => u.対象年月 == ym);
+
+            return new MonthlySummary
+            {
+                対象年月 = ym,
+                期間 = 期間,
+                所定内計 = filtered.Any() ? filtered.Sum(k => k.所定内時間 ?? 0) : null,
+                残業計 = filtered.Any() ? filtered.Sum(k => k.残業時間 ?? 0) : null,
+                深夜計 = filtered.Any() ? filtered.Sum(k => k.深夜残業時間 ?? 0) : null,
+                合計 = filtered.Any() ? filtered.Sum(k => k.合計時間 ?? 0) : null,
+                提出済み = upl != null
+            };
+        }).ToList();
+    }
+
+    void GoToDetail(int 対象年月)
+    {
+        Navigation.NavigateTo($"/attendance/{selectedEmployeeId}/{対象年月}");
+    }
+
+    class MonthlySummary
+    {
+        public int 対象年月 { get; set; }
+        public string 期間 { get; set; } = "";
+        public decimal? 所定内計 { get; set; }
+        public decimal? 残業計 { get; set; }
+        public decimal? 深夜計 { get; set; }
+        public decimal? 合計 { get; set; }
+        public bool 提出済み { get; set; }
+    }
+}

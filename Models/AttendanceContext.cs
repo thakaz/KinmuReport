@@ -25,8 +25,6 @@ public partial class AttendanceContext : DbContext
 
     public virtual DbSet<社員> 社員s { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
-
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,7 +61,7 @@ public partial class AttendanceContext : DbContext
 
         modelBuilder.Entity<勤怠>(entity =>
         {
-            entity.HasKey(e => new { e.社員番号, e.勤務日 }).HasName("勤怠_pkey");
+            entity.HasKey(e => new { e.社員番号, e.対象年月, e.勤務日 }).HasName("勤怠_pkey");
 
             entity.HasOne(d => d.社員番号Navigation).WithMany(p => p.勤怠s)
                 .OnDelete(DeleteBehavior.ClientSetNull)

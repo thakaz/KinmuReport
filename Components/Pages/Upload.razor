@@ -1,6 +1,7 @@
 @page "/upload"
 @using KinmuReport.Services
 @using KinmuReport.Models
+@using Microsoft.EntityFrameworkCore
 @inject ExcelParseService Parser
 @inject AttendanceContext Context
 
@@ -42,7 +43,7 @@
                     <i class="bi bi-person me-1"></i>@parseResult.Value.社員番号
                 </span>
                 <span class="badge bg-info text-dark">
-                    <i class="bi bi-calendar me-1"></i>@parseResult.Value.年 年 @parseResult.Value.月 月
+                    <i class="bi bi-calendar me-1"></i>@年 年 @月 月
                 </span>
             </p>
 
@@ -89,8 +90,11 @@
 }
 
 @code {
-    private (string 社員番号, int 年, int 月, List<勤怠> 勤怠リスト)? parseResult;
+    private (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト)? parseResult;
     private string? message;
+
+	private int 年 => parseResult?.対象年月 / 100 ?? 0;
+    private int 月 => parseResult?.対象年月 % 100 ?? 0;
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
@@ -117,11 +121,12 @@
 
         try
         {
-            var (社員番号, 年, 月, 勤怠リスト) = parseResult.Value;
+            var (社員番号, 対象年月, 勤怠リスト) = parseResult.Value;
 
-            var existing = Context.勤怠s
-                .Where(k => k.社員番号 == 社員番号 && 勤怠リスト.Select(r => r.勤務日).Contains(k.勤務日));
-            Context.勤怠s.RemoveRange(existing);
+
+            await Context.勤怠s
+                .Where(k => k.社員番号 == 社員番号 && k.対象年月 == 対象年月)
+                .ExecuteDeleteAsync();
 
             Context.勤怠s.AddRange(勤怠リスト);
             await Context.SaveChangesAsync();

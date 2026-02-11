@@ -1,0 +1,100 @@
+﻿@page "/attendance/{empId}/{yearMonth:int}"
+@using Microsoft.EntityFrameworkCore
+@inject KinmuReport.Models.AttendanceContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>勤怠明細</PageTitle>
+
+<h2 class="mb-4">
+    <i class="bi bi-calendar3 me-2"></i>勤怠明細
+</h2>
+
+@if (employee != null)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <span class="fw-bold me-3">@employee.社員名</span>
+            <span class="text-muted">@(yearMonth / 100)年 @(yearMonth % 100)月</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>勤務日</th>
+                            <th>曜日</th>
+                            <th>出勤</th>
+                            <th>退勤</th>
+                            <th class="text-end">所定内</th>
+                            <th class="text-end">残業</th>
+                            <th class="text-end">深夜</th>
+                            <th class="text-end">合計</th>
+                            <th>区分</th>
+                            <th>備考</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in records)
+                        {
+                            var dow = r.勤務日.ToDateTime(TimeOnly.MinValue).ToString("ddd");
+                            var isWeekend = r.勤務日.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+                            <tr class="@(isWeekend ? "table-secondary" : "")">
+                                <td>@r.勤務日.ToString("MM/dd")</td>
+                                <td>@dow</td>
+                                <td>@r.出勤日時?.ToString("HH:mm")</td>
+                                <td>@r.退勤日時?.ToString("HH:mm")</td>
+                                <td class="text-end">@r.所定内時間?.ToString("0.00")</td>
+                                <td class="text-end">@r.残業時間?.ToString("0.00")</td>
+                                <td class="text-end">@r.深夜残業時間?.ToString("0.00")</td>
+                                <td class="text-end">@r.合計時間?.ToString("0.00")</td>
+                                <td>@r.勤怠区分</td>
+                                <td>@r.備考</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td colspan="4">合計</td>
+                            <td class="text-end">@records.Sum(r => r.所定内時間 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@records.Sum(r => r.残業時間 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@records.Sum(r => r.深夜残業時間 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@records.Sum(r => r.合計時間 ?? 0).ToString("0.00")</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="GoBack">
+                <i class="bi bi-arrow-left me-1"></i>戻る
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string empId { get; set; } = "";
+    [Parameter] public int yearMonth { get; set; }
+
+    KinmuReport.Models.社員? employee;
+    List<KinmuReport.Models.勤怠> records = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        employee = await DbContext.社員s.FindAsync(empId);
+
+        records = await DbContext.勤怠s
+            .Where(k => k.社員番号 == empId && k.対象年月 == yearMonth)
+            .OrderBy(k => k.勤務日)
+            .ToListAsync();
+    }
+
+    void GoBack()
+    {
+        Navigation.NavigateTo("/attendance");
+    }
+}

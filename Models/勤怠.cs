@@ -6,13 +6,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KinmuReport.Models;
 
-[PrimaryKey("社員番号", "勤務日")]
+[PrimaryKey("社員番号", "対象年月", "勤務日")]
 [Table("勤怠")]
 public partial class 勤怠
 {
     [Key]
     [StringLength(20)]
     public string 社員番号 { get; set; } = null!;
+
+    [Key]
+    public int 対象年月 { get; set; }
 
     [Key]
     public DateOnly 勤務日 { get; set; }

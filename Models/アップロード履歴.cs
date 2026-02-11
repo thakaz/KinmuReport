@@ -15,8 +15,7 @@ public partial class アップロード履歴
     public string 社員番号 { get; set; } = null!;
 
     [Key]
-    [StringLength(7)]
-    public string 対象年月 { get; set; } = null!;
+    public int 対象年月 { get; set; }
 
     [Column(TypeName = "timestamp without time zone")]
     public DateTime アップロード日時 { get; set; }

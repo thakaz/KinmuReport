@@ -5,7 +5,7 @@ namespace KinmuReport.Services;
 
 public class ExcelParseService
 {
-    public (string 社員番号, int 年, int 月, List<勤怠> 勤怠リスト) ParseExcel(Stream stream)
+    public (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト) ParseExcel(Stream stream)
     {
         using var workbook = new XLWorkbook(stream);
 
@@ -14,6 +14,8 @@ public class ExcelParseService
         var 社員番号 = headerSheet.Cell("AU1").GetString().Trim();
         var 年 = headerSheet.Cell("AJ1").GetValue<int>();
         var 月 = headerSheet.Cell("AO1").GetValue<int>();
+
+        var 対象年月 = 年 * 100 + 月;
 
         //勤怠情報を取得
         var dataSheet = workbook.Worksheet("データ");
@@ -28,6 +30,7 @@ public class ExcelParseService
             var record = new 勤怠
             {
                 社員番号 = 社員番号,
+                対象年月 = 対象年月,
                 勤務日 = 勤務日,
                 所定内時間 = GetDecimal(dataSheet, row, 5),
                 残業時間 = GetDecimal(dataSheet, row, 6),
@@ -57,7 +60,7 @@ public class ExcelParseService
             勤怠リスト.Add(record);
         }
 
-        return (社員番号, 年, 月, 勤怠リスト);
+        return (社員番号, 対象年月, 勤怠リスト);
     }
 
     private static decimal? GetDecimal(IXLWorksheet sheet, int row, int col)

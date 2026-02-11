@@ -15,8 +15,7 @@ public partial class ロック
     public string 社員番号 { get; set; } = null!;
 
     [Key]
-    [StringLength(7)]
-    public string 対象年月 { get; set; } = null!;
+    public int 対象年月 { get; set; }
 
     [StringLength(20)]
     public string ロック者番号 { get; set; } = null!;

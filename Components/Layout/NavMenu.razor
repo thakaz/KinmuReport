@@ -19,6 +19,18 @@
             </NavLink>
         </li>
 
+        <li class="nav-item">
+            <NavLink class="nav-link text-white" href="attendance" Match="NavLinkMatch.All">
+                <i class="bi bi-table me-2"></i> 提出状況一覧
+            </NavLink>
+        </li>
+
+        <li class="nav-item">
+            <NavLink class="nav-link text-white" href="my-attendance" Match="NavLinkMatch.All">
+                <i class="bi bi-person-lines-fill me-2"></i> 個人年間サマリー
+            </NavLink>
+        </li>
+
         <AuthorizeView Roles="管理者">
             <li class="nav-item">
                 <NavLink class="nav-link text-white" href="admin">
