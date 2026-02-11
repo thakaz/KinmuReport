@@ -1,0 +1,22 @@
+﻿@page "/login"
+@model KinmuReport.Pages.LoginModel;
+
+<h2>ログイン</h2>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <p style="color:red">@Model.ErrorMessage</p>
+}
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <div>
+        <label>ログインID</label>
+        <input type="text" name="LoginId" required />
+    </div>
+    <div>
+        <label>パスワード</label>
+        <input type="password" name="Password" required />
+    </div>
+    <button type="submit">ログイン</button>
+</form>
