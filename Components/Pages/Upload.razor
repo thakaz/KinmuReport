@@ -6,6 +6,8 @@
 @inject ExcelParseService Parser
 @inject AttendanceContext Context
 @inject LockService LockService
+@inject SharePointService SharePoint
+
 
 
 <PageTitle>アップロード</PageTitle>
@@ -95,12 +97,16 @@
 @code {
     private (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト)? parseResult;
     private string? message;
-	private bool isError = false;
+    private bool isError = false;
 
     private int 年 => parseResult?.対象年月 / 100 ?? 0;
     private int 月 => parseResult?.対象年月 % 100 ?? 0;
 
     string currentUserId = "";
+
+    private byte[]? uploadedFileBytes;
+    private string? uploadedFileName;
+
 
     [CascadingParameter] Task<AuthenticationState> AuthState { get; set; } = default!;
 
@@ -121,8 +127,10 @@
             using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
-            ms.Position = 0;
+			uploadedFileBytes = ms.ToArray();
+			uploadedFileName = e.File.Name;
 
+            ms.Position = 0;
             parseResult = Parser.ParseExcel(ms);
         }
         catch (Exception ex)
@@ -135,7 +143,7 @@
     private async Task SaveToDb()
     {
 
-        if (parseResult is null) return;
+        if (parseResult is null || uploadedFileBytes is null) return;
 
         // ロックチェック
         var lockRecord = await LockService.GetLock(parseResult?.社員番号 ?? "", parseResult?.対象年月 ?? 0);
@@ -158,6 +166,36 @@
             Context.ChangeTracker.Clear();
 
             Context.勤怠s.AddRange(勤怠リスト);
+
+            //SharePointにアップロード
+			var folderPath = $"/勤務報告/{社員番号}";
+
+			var fileName = $"{対象年月}_{社員番号}_勤務報告.xlsm";
+			using var uploadStream = new MemoryStream(uploadedFileBytes);
+			var version = await SharePoint.UploadAsync(folderPath, fileName, uploadStream);
+
+            //アップロード履歴を登録/更新
+            var history = await Context.アップロード履歴s
+				.FirstOrDefaultAsync(h => h.社員番号 == 社員番号 && h.対象年月 == 対象年月);
+
+            if(history == null)
+            {
+                history = new アップロード履歴
+                {
+                    社員番号 = 社員番号,
+                    対象年月 = 対象年月,
+                    アップロード日時 = DateTime.Now,
+                    sp版数 = version
+                };
+                Context.アップロード履歴s.Add(history);
+            }
+            else
+            {
+                history.アップロード日時 = DateTime.Now;
+                history.sp版数= version;
+                Context.アップロード履歴s.Update(history);
+			}
+
             await Context.SaveChangesAsync();
 
             message = $"{勤怠リスト.Count}件を保存しました。";

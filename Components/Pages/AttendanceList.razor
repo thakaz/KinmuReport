@@ -50,6 +50,7 @@
                             <th>提出日時</th>
                             <th class="text-end">版数</th>
                             <th>ロック</th>
+                            <th></th>
 
                         </tr>
                     </thead>
@@ -84,6 +85,15 @@
                                         </AuthorizeView>
                                     }
                                 </td>
+
+                                <td>@if (s.提出済み)
+                                    {
+                                        <a href="/api/download/@s.社員番号/@selectedYearMonth" class="btn btn-outline-primary btn-sm" @onclick:stopPropagation="true">
+                                            <i class="bi bi-download"></i>    
+                                        </a>
+                                    }
+                                </td>
+
                             </tr>
                         }
                     </tbody>

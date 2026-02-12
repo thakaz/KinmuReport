@@ -486,3 +486,5 @@ docs/
 .claude/
 *.xlsm
 *.xlsx
+appsettings.Development.json
+/appsettings.Development.json
