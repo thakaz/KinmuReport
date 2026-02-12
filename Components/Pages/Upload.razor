@@ -97,7 +97,6 @@
 @code {
     private (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト)? parseResult;
     private string? message;
-    private bool isError = false;
 
     private int 年 => parseResult?.対象年月 / 100 ?? 0;
     private int 月 => parseResult?.対象年月 % 100 ?? 0;
@@ -150,13 +149,12 @@
         if (lockRecord != null && lockRecord.ロック者番号 != currentUserId)
         {
             message = $"この期間は {lockRecord.ロック者番号Navigation?.社員名 ?? lockRecord.ロック者番号} がロック中のためアップロードできません。";
-            isError = true;
             return;
         }
 
         try
         {
-            var (社員番号, 対象年月, 勤怠リスト) = parseResult.Value;
+            var (社員番号, 対象年月, 勤怠リスト) = parseResult!.Value;
 
 
             await Context.勤怠s

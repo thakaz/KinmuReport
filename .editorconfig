@@ -1,0 +1,83 @@
+# EditorConfig - KinmuReport
+# https://editorconfig.org
+# 参考: https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/code-style-rule-options
+
+root = true
+
+# 全ファイル共通
+[*]
+charset = utf-8-bom
+end_of_line = crlf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C# ファイル
+[*.cs]
+
+# 名前空間: file-scoped（namespace Foo; 形式）
+csharp_style_namespace_declarations = file_scoped:warning
+
+# 中括弧: 常に使用
+csharp_prefer_braces = true:warning
+
+# var の使用
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# null チェック: パターンマッチング推奨
+csharp_style_prefer_null_check_over_type_check = true:suggestion
+csharp_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
+
+# using ディレクティブ
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+
+# 式本体メンバー
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+
+# 改行（Allman スタイル）
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+
+# インデント
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+
+# スペース
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+
+# 命名規則
+dotnet_naming_rule.private_fields_should_be_camel_case.severity = suggestion
+dotnet_naming_rule.private_fields_should_be_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camel_case.style = camel_case_underscore
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.camel_case_underscore.capitalization = camel_case
+dotnet_naming_style.camel_case_underscore.required_prefix = _
+
+# Razor / Blazor
+[*.razor]
+indent_size = 4
+
+# JSON
+[*.json]
+indent_size = 2
+
+# YAML
+[*.{yml,yaml}]
+indent_size = 2
+
+# XML / csproj
+[*.{xml,csproj,props,targets}]
+indent_size = 2

@@ -14,7 +14,10 @@ public class LockService(AttendanceContext context)
             .Include(l => l.ロック者番号Navigation)
             .FirstOrDefaultAsync(l => l.社員番号 == 社員番号 && l.対象年月 == 対象年月);
 
-        if (lockRecord == null) return null;
+        if (lockRecord == null)
+        {
+            return null;
+        }
 
         // タイムアウトチェック
         if (DateTime.Now - lockRecord.ロック日時 > LockTimeout)
@@ -31,7 +34,10 @@ public class LockService(AttendanceContext context)
     public async Task<bool> TryAcquire(string 社員番号, int 対象年月, string ロック者番号)
     {
         var existing = await GetLock(社員番号, 対象年月);
-        if (existing != null) return false;
+        if (existing != null)
+        {
+            return false;
+        }
 
         context.ロックs.Add(new ロック
         {
@@ -50,11 +56,16 @@ public class LockService(AttendanceContext context)
         var lockRecord = await context.ロックs
             .FirstOrDefaultAsync(l => l.社員番号 == 社員番号 && l.対象年月 == 対象年月);
 
-        if (lockRecord == null) return false;
+        if (lockRecord == null)
+        {
+            return false;
+        }
 
         // 本人または管理者のみ解除可能
         if (lockRecord.ロック者番号 != 操作者番号 && 操作者ロール != "管理者")
+        {
             return false;
+        }
 
         context.ロックs.Remove(lockRecord);
         await context.SaveChangesAsync();

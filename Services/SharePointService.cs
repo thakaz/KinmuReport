@@ -26,12 +26,15 @@ public class SharePointService
 
     private async Task<string> GetDriveIdAsync()
     {
-        if (_driveId != null) return _driveId;
+        if (_driveId != null)
+        {
+            return _driveId;
+        }
 
         var uri = new Uri(_siteUrl);
         var site = await _client.Sites[$"{uri.Host}:{uri.AbsolutePath}"].GetAsync();
         var drive = await _client.Sites[site!.Id].Drive.GetAsync();
-        _driveId = drive!.Id;
+        _driveId = drive!.Id!;
         return _driveId;
     }
 

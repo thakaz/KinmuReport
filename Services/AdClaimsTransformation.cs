@@ -15,10 +15,14 @@ public class AdClaimsTransformation(
     {
         var objectId = principal.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
         if (string.IsNullOrEmpty(objectId))
+        {
             return principal;
+        }
 
         if (principal.HasClaim(c => c.Type == "社員番号"))
+        {
             return principal;
+        }
 
         // Graph APIでemployeeIdを取得
         var user = await graphClient.Users[objectId]
