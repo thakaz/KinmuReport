@@ -2,6 +2,10 @@ using KinmuReport.Components;
 using KinmuReport.Services;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Identity.Web;
+
 namespace KinmuReport;
 
 public class Program
@@ -29,12 +33,22 @@ public class Program
             ));
 
         // 認証・認可
-        builder.Services.AddAuthentication("Cookies")
-            .AddCookie("Cookies", options =>
-            {
-                options.LoginPath = "/login";
-                options.LogoutPath = "/logout";
-            });
+        builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultScheme = "Cookies";
+            options.DefaultChallengeScheme = "Cookies";
+        })
+        .AddCookie("Cookies", options =>
+        {
+            options.LoginPath = "/login";
+            options.LogoutPath = "/logout";
+        })
+        .AddMicrosoftIdentityWebApp(
+            builder.Configuration.GetSection("AzureAd"),
+            OpenIdConnectDefaults.AuthenticationScheme,
+            cookieScheme:null
+        );
+
         builder.Services.AddAuthorization();
         builder.Services.AddCascadingAuthenticationState();
 
@@ -43,6 +57,20 @@ public class Program
         builder.Services.AddScoped<LockService>();
 
         builder.Services.AddSingleton<SharePointService>();
+
+
+        builder.Services.AddScoped<IClaimsTransformation, AdClaimsTransformation>();
+
+
+        builder.Services.AddSingleton(sp =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var tenantId = config["SharePoint:TenantId"] ?? "";
+            var clientId = config["SharePoint:ClientId"] ?? "";
+            var clientSecret = config["SharePoint:ClientSecret"] ?? "";
+            var credential = new Azure.Identity.ClientSecretCredential(tenantId, clientId, clientSecret);
+            return new Microsoft.Graph.GraphServiceClient(credential);
+        });
 
         var app = builder.Build();
 
@@ -98,6 +126,14 @@ public class Program
             }
             return Results.File(stream, "application/vnd.ms-excel.sheet.macroEnabled.12", fileName);
         }).RequireAuthorization();
+
+        //AD認証用
+        app.MapGet("/login-ad", async (HttpContext context) =>
+        {
+            await context.ChallengeAsync(
+                OpenIdConnectDefaults.AuthenticationScheme,
+                new AuthenticationProperties { RedirectUri = "/" });
+        });
 
 
         app.Run();
