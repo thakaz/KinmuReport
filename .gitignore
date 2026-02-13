@@ -487,4 +487,7 @@ docs/
 *.xlsm
 *.xlsx
 appsettings.Development.json
-/appsettings.Development.json
+appsettings.Production.json
+*.db
+*.db-shm
+*.db-wal

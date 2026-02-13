@@ -28,9 +28,9 @@ public class Program
 
         // DB
         builder.Services.AddDbContext<KinmuReport.Models.AttendanceContext>(
-            options => options.UseNpgsql(
+            options => options.UseSqlite(
                 builder.Configuration.GetConnectionString("AttendanceContext") ??
-                "Host=localhost;Port=5433;Database=attendance;Username=postgres;Password=postgres"
+                "Data Source=Data/kinmu.db"
             ));
 
         // 認証・認可
@@ -78,6 +78,13 @@ public class Program
         });
 
         var app = builder.Build();
+
+        // DB初期化（マイグレーション自動適用）
+        using (var scope = app.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<KinmuReport.Models.AttendanceContext>();
+            context.Database.Migrate();
+        }
 
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())
