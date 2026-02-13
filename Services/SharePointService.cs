@@ -12,6 +12,14 @@ public class SharePointService
     private readonly string _siteUrl;
     private string? _driveId;
 
+    /// <summary>勤務報告ファイルのパスを生成</summary>
+    public static (string folder, string fileName) GetReportPath(string employeeId, int yearMonth)
+    {
+        var folder = $"{AppConstants.SharePointRootFolder}/{employeeId}";
+        var fileName = $"{yearMonth}_{employeeId}_勤務報告.xlsm";
+        return (folder, fileName);
+    }
+
     public SharePointService(IConfiguration config, ILogger<SharePointService> logger)
     {
         _logger = logger;

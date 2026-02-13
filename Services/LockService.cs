@@ -5,7 +5,6 @@ namespace KinmuReport.Services;
 
 public class LockService(AttendanceContext context)
 {
-    private static readonly TimeSpan LockTimeout = TimeSpan.FromDays(1);
 
     /// ロック状態を取得（タイムアウト済みは自動削除）
     public async Task<ロック?> GetLock(string 社員番号, int 対象年月)
@@ -20,7 +19,7 @@ public class LockService(AttendanceContext context)
         }
 
         // タイムアウトチェック
-        if (DateTime.Now - lockRecord.ロック日時 > LockTimeout)
+        if (DateTime.Now - lockRecord.ロック日時 > AppConstants.LockTimeout)
         {
             context.ロックs.Remove(lockRecord);
             await context.SaveChangesAsync();
@@ -62,7 +61,7 @@ public class LockService(AttendanceContext context)
         }
 
         // 本人または管理者のみ解除可能
-        if (lockRecord.ロック者番号 != 操作者番号 && 操作者ロール != "管理者")
+        if (lockRecord.ロック者番号 != 操作者番号 && 操作者ロール != Roles.Admin)
         {
             return false;
         }

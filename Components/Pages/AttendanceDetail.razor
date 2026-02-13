@@ -1,9 +1,9 @@
 ﻿@page "/attendance/{empId}/{yearMonth:int}"
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using KinmuReport
 @inject KinmuReport.Models.AttendanceContext DbContext
 @inject NavigationManager Navigation
-
-@using Microsoft.AspNetCore.Components.Authorization
 
 
 <PageTitle>勤怠明細</PageTitle>
@@ -17,7 +17,7 @@
     <div class="card mb-3">
         <div class="card-body">
             <span class="fw-bold me-3">@employee.社員名</span>
-            <span class="text-muted">@(yearMonth / 100)年 @(yearMonth % 100)月</span>
+            <span class="text-muted">@yearMonth.GetYear()年 @yearMonth.GetMonth()月</span>
         </div>
     </div>
 
@@ -96,15 +96,15 @@
     {
         var authState = await AuthState;
         var user = authState.User;
-        var currentUserId = user.FindFirst("社員番号")?.Value ?? "";
+        var currentUserId = user.FindFirst(ClaimNames.EmployeeId)?.Value ?? "";
         var currentRole = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
-        var currentGroup = user.FindFirst("グループコード")?.Value ?? "";
+        var currentGroup = user.FindFirst(ClaimNames.GroupCode)?.Value ?? "";
 
         // 権限チェック
         var allowed = currentRole switch
         {
-            "管理者" => true,
-            "グループ管理者" => await DbContext.社員s
+            Roles.Admin => true,
+            Roles.GroupAdmin => await DbContext.社員s
                 .AnyAsync(e => e.社員番号 == empId && e.グループコード == currentGroup),
             _ => empId == currentUserId
         };

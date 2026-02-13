@@ -19,7 +19,7 @@ public class Program
             .AddInteractiveServerComponents()
             .AddHubOptions(options =>
             {
-                options.MaximumReceiveMessageSize = 10 * 1024 * 1024; // 10MB（Excel アップロード用）
+                options.MaximumReceiveMessageSize = AppConstants.MaxUploadSizeBytes;
             });
 
         // Razor Pages（ログイン・ログアウト用）
@@ -106,7 +106,7 @@ public class Program
                 return Results.Unauthorized();
             }
 
-            var currentUserId = httpContext.User.FindFirst("社員番号")?.Value ??"";
+            var currentUserId = httpContext.User.FindFirst(ClaimNames.EmployeeId)?.Value ?? "";
 
             //ロック取得
             var acquired = await lockService.TryAcquire(社員番号, 対象年月, currentUserId);
@@ -117,8 +117,7 @@ public class Program
             }
 
 
-            var folderPath = $"/勤務報告/{社員番号}";
-            var fileName = $"{対象年月}_{社員番号}_勤務報告.xlsm";
+            var (folderPath, fileName) = SharePointService.GetReportPath(社員番号, 対象年月);
             var stream = await sharePoint.DownloadAsync(folderPath, fileName);
             if (stream == null)
             {

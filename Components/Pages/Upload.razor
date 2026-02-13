@@ -1,4 +1,5 @@
 @page "/upload"
+@using KinmuReport
 @using KinmuReport.Services
 @using KinmuReport.Models
 @using Microsoft.AspNetCore.Components.Authorization
@@ -98,8 +99,8 @@
     private (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト)? parseResult;
     private string? message;
 
-    private int 年 => parseResult?.対象年月 / 100 ?? 0;
-    private int 月 => parseResult?.対象年月 % 100 ?? 0;
+    private int 年 => parseResult.HasValue ? parseResult.Value.対象年月.GetYear() : 0;
+    private int 月 => parseResult.HasValue ? parseResult.Value.対象年月.GetMonth() : 0;
 
     string currentUserId = "";
 
@@ -113,7 +114,7 @@
     {
         var authState = await AuthState;
 		var user = authState.User;
-        currentUserId = user.FindFirst("社員番号")?.Value ?? "";
+        currentUserId = user.FindFirst(ClaimNames.EmployeeId)?.Value ?? "";
     }
 
 
@@ -123,7 +124,7 @@
         message = null;
         try
         {
-            using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var stream = e.File.OpenReadStream(maxAllowedSize: AppConstants.MaxUploadSizeBytes);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
 			uploadedFileBytes = ms.ToArray();
@@ -166,9 +167,7 @@
             Context.勤怠s.AddRange(勤怠リスト);
 
             //SharePointにアップロード
-			var folderPath = $"/勤務報告/{社員番号}";
-
-			var fileName = $"{対象年月}_{社員番号}_勤務報告.xlsm";
+			var (folderPath, fileName) = SharePointService.GetReportPath(社員番号, 対象年月);
 			using var uploadStream = new MemoryStream(uploadedFileBytes);
 			var version = await SharePoint.UploadAsync(folderPath, fileName, uploadStream);
 

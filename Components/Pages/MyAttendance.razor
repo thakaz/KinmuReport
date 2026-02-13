@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims
+@using KinmuReport
 @inject KinmuReport.Models.AttendanceContext DbContext
 @inject NavigationManager Navigation
 
@@ -17,10 +18,13 @@
         <div class="row g-3 align-items-end">
             <div class="col-auto">
                 <label class="form-label">年度</label>
+                @{
+                    var currentFiscalYear = YearMonthHelper.GetCurrentFiscalYear();
+                }
                 <select class="form-select" @bind="selectedYear">
-                    @for (int y = DateTime.Now.Year; y >= DateTime.Now.Year - 2; y--)
+                    @for (int y = currentFiscalYear; y >= currentFiscalYear - 2; y--)
                     {
-                        <option value="@y">@y</option>
+                        <option value="@y">@y 年度</option>
                     }
                 </select>
             </div>
@@ -74,7 +78,7 @@
                         @foreach (var s in monthlySummaries)
                         {
                             <tr style="cursor: pointer" @onclick="() => GoToDetail(s.対象年月)">
-                                <td>@(s.対象年月 / 100)/@(s.対象年月 % 100)</td>
+                                <td>@s.対象年月.GetYear()/@s.対象年月.GetMonth()</td>
                                 <td class="text-muted">@s.期間</td>
                                 <td class="text-end">@s.所定内計?.ToString("0.00")</td>
                                 <td class="text-end">@s.残業計?.ToString("0.00")</td>
@@ -113,7 +117,8 @@
 @code {
     [CascadingParameter] Task<AuthenticationState> AuthState { get; set; } = default!;
 
-    int selectedYear = DateTime.Now.Year;
+    // 年度計算: 4月始まりなので、1-3月は前年度
+    int selectedYear = YearMonthHelper.GetCurrentFiscalYear();
     string closingType = "15";
     string currentUserId = "";
 
@@ -130,15 +135,15 @@
         var authState = await AuthState;
 
         currentRole = authState.User.FindFirst(ClaimTypes.Role)?.Value ?? "";
-        currentGroup = authState.User.FindFirst("グループコード")?.Value ?? "";
+        currentGroup = authState.User.FindFirst(ClaimNames.GroupCode)?.Value ?? "";
 
-        currentUserId = authState.User.FindFirst("社員番号")?.Value ?? "";
+        currentUserId = authState.User.FindFirst(ClaimNames.EmployeeId)?.Value ?? "";
 		selectedEmployeeId = currentUserId;
 
         visibleEmployees = currentRole switch
         {
-            "管理者" => await DbContext.社員s.OrderBy(e => e.社員番号).ToListAsync(),
-            "グループ管理者" => await DbContext.社員s
+            Roles.Admin => await DbContext.社員s.OrderBy(e => e.社員番号).ToListAsync(),
+            Roles.GroupAdmin => await DbContext.社員s
                 .Where(e => e.グループコード == currentGroup)
                 .OrderBy(e => e.社員番号).ToListAsync(),
             _ => await DbContext.社員s
@@ -155,8 +160,8 @@
         var months = Enumerable.Range(0, 12)
             .Select(i =>
             {
-                var d = new DateTime(selectedYear, 4, 1).AddMonths(i);
-                return d.Year * 100 + d.Month;
+                var d = new DateTime(selectedYear, AppConstants.FiscalYearStartMonth, 1).AddMonths(i);
+                return d.ToYearMonth();
             }).ToList();
 
         // 年間の勤怠データを一括取得
@@ -171,8 +176,8 @@
 
         monthlySummaries = months.Select(ym =>
         {
-            var 年 = ym / 100;
-            var 月 = ym % 100;
+            var 年 = ym.GetYear();
+            var 月 = ym.GetMonth();
 
             // 締め日に応じて勤務日でフィルタ
             List<KinmuReport.Models.勤怠> filtered;

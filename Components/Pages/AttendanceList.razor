@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
 @using System.Security.Claims
+@using KinmuReport
 @inject KinmuReport.Models.AttendanceContext DbContext
 @inject NavigationManager Navigation
 @inject KinmuReport.Services.LockService LockService
@@ -19,8 +20,7 @@
         <div class="row g-3 align-items-end">
             <div class="col-auto">
                 <label class="form-label">対象年月</label>
-                <input type="number" class="form-control" @bind="selectedYearMonth"
-                       placeholder="202509" style="width: 120px" />
+                <input type="month" class="form-control" @bind="selectedMonth" />
             </div>
             <div class="col-auto">
                 <button class="btn btn-primary" @onclick="Search">
@@ -109,7 +109,10 @@
 @code {
     [CascadingParameter] Task<AuthenticationState> AuthState { get; set; } = default!;
 
-    int selectedYearMonth = DateTime.Now.Year * 100 + DateTime.Now.Month;
+    DateTime selectedMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+
+    // int形式（YYYYMM）への変換
+    int selectedYearMonth => selectedMonth.ToYearMonth();
 
     List<EmployeeSummary> summaries = new();
 
@@ -121,9 +124,9 @@
     {
         var authState = await AuthState;
         var user = authState.User;
-        currentUserId = user.FindFirst("社員番号")?.Value ?? "";
+        currentUserId = user.FindFirst(ClaimNames.EmployeeId)?.Value ?? "";
         currentRole = user.FindFirst(ClaimTypes.Role)?.Value ?? "";
-        currentGroup = user.FindFirst("グループコード")?.Value ?? "";
+        currentGroup = user.FindFirst(ClaimNames.GroupCode)?.Value ?? "";
 
         await Search();
     }
@@ -134,9 +137,9 @@
         var employeeQuery = DbContext.社員s.AsQueryable();
         switch (currentRole)
         {
-            case "管理者":
+            case Roles.Admin:
                 break;
-            case "グループ管理者":
+            case Roles.GroupAdmin:
                 employeeQuery = employeeQuery.Where(e => e.グループコード == currentGroup);
                 break;
             default:
@@ -179,7 +182,7 @@
 
             var lck = locks.FirstOrDefault(l => l.社員番号 == emp.社員番号);
             // タイムアウトチェック
-            var isLocked = lck != null && (DateTime.Now - lck.ロック日時) <= TimeSpan.FromDays(1);
+            var isLocked = lck != null && (DateTime.Now - lck.ロック日時) <= AppConstants.LockTimeout;
 
             return new EmployeeSummary
             {

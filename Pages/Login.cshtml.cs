@@ -35,9 +35,9 @@ public class LoginModel : PageModel
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, 社員.社員名),
-            new("社員番号", 社員.社員番号),
+            new(ClaimNames.EmployeeId, 社員.社員番号),
             new(ClaimTypes.Role, 社員.権限),
-            new("グループコード", 社員.グループコード ?? "")
+            new(ClaimNames.GroupCode, 社員.グループコード ?? "")
         };
 
         var identity = new ClaimsIdentity(claims, "Cookies");
