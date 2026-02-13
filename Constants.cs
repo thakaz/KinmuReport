@@ -20,21 +20,13 @@ public static class Roles
 }
 
 /// <summary>
-/// アプリケーション設定の定数
+/// アプリケーション設定の定数（静的ヘルパーで使用するもののみ）
+/// ※ 他の設定値は AppSettings クラス経由で appsettings.json から取得
 /// </summary>
 public static class AppConstants
 {
-    /// <summary>ロックのタイムアウト期間</summary>
-    public static readonly TimeSpan LockTimeout = TimeSpan.FromDays(1);
-
-    /// <summary>アップロード最大サイズ（バイト）</summary>
-    public const int MaxUploadSizeBytes = 10 * 1024 * 1024;
-
-    /// <summary>年度開始月（4月）</summary>
+    /// <summary>年度開始月（4月）- 静的ヘルパーで使用</summary>
     public const int FiscalYearStartMonth = 4;
-
-    /// <summary>SharePointのルートフォルダ</summary>
-    public const string SharePointRootFolder = "/勤務報告";
 }
 
 /// <summary>

@@ -1,29 +1,38 @@
-﻿using ClosedXML.Excel;
+using ClosedXML.Excel;
 using KinmuReport.Models;
+using Microsoft.Extensions.Options;
 
 namespace KinmuReport.Services;
 
 public class ExcelParseService
 {
+    private readonly ExcelParseSettings _settings;
+
+    public ExcelParseService(IOptions<ExcelParseSettings> settings)
+    {
+        _settings = settings.Value;
+    }
+
     public (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト) ParseExcel(Stream stream)
     {
         using var workbook = new XLWorkbook(stream);
 
         //ヘッダー情報を取得
-        var headerSheet = workbook.Worksheet("勤務報告書");
-        var 社員番号 = headerSheet.Cell("AU1").GetString().Trim();
-        var 年 = headerSheet.Cell("AJ1").GetValue<int>();
-        var 月 = headerSheet.Cell("AO1").GetValue<int>();
+        var headerSheet = workbook.Worksheet(_settings.HeaderSheetName);
+        var 社員番号 = headerSheet.Cell(_settings.Header.社員番号).GetString().Trim();
+        var 年 = headerSheet.Cell(_settings.Header.年).GetValue<int>();
+        var 月 = headerSheet.Cell(_settings.Header.月).GetValue<int>();
 
         var 対象年月 = 年 * 100 + 月;
 
         //勤怠情報を取得
-        var dataSheet = workbook.Worksheet("データ");
+        var dataSheet = workbook.Worksheet(_settings.DataSheetName);
         var 勤怠リスト = new List<勤怠>();
+        var cols = _settings.Data;
 
-        for (int row = 2; row <= 32; row++)
+        for (int row = _settings.DataStartRow; row <= _settings.DataEndRow; row++)
         {
-            var 勤務日Cell = dataSheet.Cell(row, 1);
+            var 勤務日Cell = dataSheet.Cell(row, cols.勤務日);
             if (勤務日Cell.IsEmpty()) continue;
 
             var 勤務日 = DateOnly.FromDateTime(勤務日Cell.GetDateTime());
@@ -32,17 +41,17 @@ public class ExcelParseService
                 社員番号 = 社員番号,
                 対象年月 = 対象年月,
                 勤務日 = 勤務日,
-                所定内時間 = GetDecimal(dataSheet, row, 5),
-                残業時間 = GetDecimal(dataSheet, row, 6),
-                深夜残業時間 = GetDecimal(dataSheet, row, 7),
-                合計時間 = GetDecimal(dataSheet, row, 8),
-                勤怠区分 = dataSheet.Cell(row, 9).IsEmpty() ? null : dataSheet.Cell(row, 9).GetString().Trim(),
-                備考 = dataSheet.Cell(row, 10).IsEmpty() ? null : dataSheet.Cell(row, 10).GetString().Trim()
+                所定内時間 = GetDecimal(dataSheet, row, cols.所定内),
+                残業時間 = GetDecimal(dataSheet, row, cols.残業),
+                深夜残業時間 = GetDecimal(dataSheet, row, cols.深夜),
+                合計時間 = GetDecimal(dataSheet, row, cols.合計),
+                勤怠区分 = GetString(dataSheet, row, cols.勤怠区分),
+                備考 = GetString(dataSheet, row, cols.備考)
             };
 
             // 出勤・退勤の time → DateTime 変換
-            var startCell = dataSheet.Cell(row, 3);
-            var endCell = dataSheet.Cell(row, 4);
+            var startCell = dataSheet.Cell(row, cols.出勤);
+            var endCell = dataSheet.Cell(row, cols.退勤);
             if (!startCell.IsEmpty() && startCell.Value.IsTimeSpan)
             {
                 var ts = startCell.GetValue<TimeSpan>();
@@ -70,5 +79,12 @@ public class ExcelParseService
         var cell = sheet.Cell(row, col);
         if (cell.IsEmpty() || !cell.Value.IsNumber) return null;
         return cell.GetValue<decimal>();
+    }
+
+    private static string? GetString(IXLWorksheet sheet, int row, int col)
+    {
+        var cell = sheet.Cell(row, col);
+        if (cell.IsEmpty()) return null;
+        return cell.GetString().Trim();
     }
 }

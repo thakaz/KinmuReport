@@ -1,10 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using KinmuReport.Models;
 
 namespace KinmuReport.Services;
 
-public class LockService(AttendanceContext context)
+public class LockService(AttendanceContext context, IOptions<AppSettings> appSettingsOptions)
 {
+    private AppSettings AppSettings => appSettingsOptions.Value;
 
     /// ロック状態を取得（タイムアウト済みは自動削除）
     public async Task<ロック?> GetLock(string 社員番号, int 対象年月)
@@ -19,7 +21,7 @@ public class LockService(AttendanceContext context)
         }
 
         // タイムアウトチェック
-        if (DateTime.Now - lockRecord.ロック日時 > AppConstants.LockTimeout)
+        if (DateTime.Now - lockRecord.ロック日時 > AppSettings.LockTimeout)
         {
             context.ロックs.Remove(lockRecord);
             await context.SaveChangesAsync();
@@ -32,21 +34,41 @@ public class LockService(AttendanceContext context)
     /// ロック取得（成功: true、既にロック中: false）
     public async Task<bool> TryAcquire(string 社員番号, int 対象年月, string ロック者番号)
     {
-        var existing = await GetLock(社員番号, 対象年月);
+        // 期限切れロックを先にクリーンアップ
+        var existing = await context.ロックs
+            .FirstOrDefaultAsync(l => l.社員番号 == 社員番号 && l.対象年月 == 対象年月);
+
         if (existing != null)
         {
-            return false;
+            if (DateTime.Now - existing.ロック日時 > AppSettings.LockTimeout)
+            {
+                context.ロックs.Remove(existing);
+                await context.SaveChangesAsync();
+            }
+            else
+            {
+                return false; // 有効なロックが存在
+            }
         }
 
-        context.ロックs.Add(new ロック
+        // INSERT を試みて、重複なら例外をキャッチ（レースコンディション対策）
+        try
         {
-            社員番号 = 社員番号,
-            対象年月 = 対象年月,
-            ロック者番号 = ロック者番号,
-            ロック日時 = DateTime.Now
-        });
-        await context.SaveChangesAsync();
-        return true;
+            context.ロックs.Add(new ロック
+            {
+                社員番号 = 社員番号,
+                対象年月 = 対象年月,
+                ロック者番号 = ロック者番号,
+                ロック日時 = DateTime.Now
+            });
+            await context.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            // 主キー違反 = 他のユーザーが先にロック取得
+            return false;
+        }
     }
 
     /// ロック解除（本人 or 管理者）

@@ -4,10 +4,12 @@
 @using KinmuReport.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Options
 @inject ExcelParseService Parser
 @inject AttendanceContext Context
 @inject LockService LockService
 @inject SharePointService SharePoint
+@inject IOptions<AppSettings> AppSettingsOptions
 
 
 
@@ -124,7 +126,7 @@
         message = null;
         try
         {
-            using var stream = e.File.OpenReadStream(maxAllowedSize: AppConstants.MaxUploadSizeBytes);
+            using var stream = e.File.OpenReadStream(maxAllowedSize: AppSettingsOptions.Value.MaxUploadSizeBytes);
             using var ms = new MemoryStream();
             await stream.CopyToAsync(ms);
 			uploadedFileBytes = ms.ToArray();
@@ -167,7 +169,7 @@
             Context.勤怠s.AddRange(勤怠リスト);
 
             //SharePointにアップロード
-			var (folderPath, fileName) = SharePointService.GetReportPath(社員番号, 対象年月);
+			var (folderPath, fileName) = SharePoint.GetReportPath(社員番号, 対象年月);
 			using var uploadStream = new MemoryStream(uploadedFileBytes);
 			var version = await SharePoint.UploadAsync(folderPath, fileName, uploadStream);
 

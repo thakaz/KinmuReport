@@ -15,11 +15,12 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Blazor
+        var maxUploadSizeMB = builder.Configuration.GetValue("App:MaxUploadSizeMB", 10);
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents()
             .AddHubOptions(options =>
             {
-                options.MaximumReceiveMessageSize = AppConstants.MaxUploadSizeBytes;
+                options.MaximumReceiveMessageSize = maxUploadSizeMB * 1024 * 1024;
             });
 
         // Razor Pages（ログイン・ログアウト用）
@@ -53,6 +54,10 @@ public class Program
         builder.Services.AddCascadingAuthenticationState();
 
         // アプリケーションサービス
+        builder.Services.Configure<AppSettings>(
+            builder.Configuration.GetSection("App"));
+        builder.Services.Configure<ExcelParseSettings>(
+            builder.Configuration.GetSection("ExcelParse"));
         builder.Services.AddScoped<ExcelParseService>();
         builder.Services.AddScoped<LockService>();
 
@@ -117,7 +122,7 @@ public class Program
             }
 
 
-            var (folderPath, fileName) = SharePointService.GetReportPath(社員番号, 対象年月);
+            var (folderPath, fileName) = sharePoint.GetReportPath(社員番号, 対象年月);
             var stream = await sharePoint.DownloadAsync(folderPath, fileName);
             if (stream == null)
             {

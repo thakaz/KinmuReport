@@ -1,4 +1,5 @@
 ﻿using Azure.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -10,19 +11,21 @@ public class SharePointService
     private readonly GraphServiceClient _client;
     private readonly ILogger<SharePointService> _logger;
     private readonly string _siteUrl;
+    private readonly AppSettings _appSettings;
     private string? _driveId;
 
     /// <summary>勤務報告ファイルのパスを生成</summary>
-    public static (string folder, string fileName) GetReportPath(string employeeId, int yearMonth)
+    public (string folder, string fileName) GetReportPath(string employeeId, int yearMonth)
     {
-        var folder = $"{AppConstants.SharePointRootFolder}/{employeeId}";
+        var folder = $"{_appSettings.SharePointRootFolder}/{employeeId}";
         var fileName = $"{yearMonth}_{employeeId}_勤務報告.xlsm";
         return (folder, fileName);
     }
 
-    public SharePointService(IConfiguration config, ILogger<SharePointService> logger)
+    public SharePointService(IConfiguration config, ILogger<SharePointService> logger, IOptions<AppSettings> appSettingsOptions)
     {
         _logger = logger;
+        _appSettings = appSettingsOptions.Value;
         var tenantId = config["SharePoint:TenantId"]!;
         var clientId = config["SharePoint:ClientId"]!;
         var clientSecret = config["SharePoint:ClientSecret"]!;
