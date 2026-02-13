@@ -484,6 +484,7 @@ $RECYCLE.BIN/
 # プロジェクト固有の除外
 docs/
 .claude/
+publish/
 *.xlsm
 *.xlsx
 appsettings.Development.json

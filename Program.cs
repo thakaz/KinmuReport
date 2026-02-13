@@ -79,6 +79,13 @@ public class Program
 
         var app = builder.Build();
 
+        // サブアプリケーションとして動作する場合のパスベース設定
+        var pathBase = builder.Configuration["App:PathBase"];
+        if (!string.IsNullOrEmpty(pathBase))
+        {
+            app.UsePathBase(pathBase);
+        }
+
         // DB初期化（マイグレーション自動適用）
         using (var scope = app.Services.CreateScope())
         {
@@ -139,11 +146,12 @@ public class Program
         }).RequireAuthorization();
 
         //AD認証用
-        app.MapGet("/login-ad", async (HttpContext context) =>
+        app.MapGet("/login-ad", async (HttpContext context, IConfiguration config) =>
         {
+            var pathBase = config["App:PathBase"] ?? "";
             await context.ChallengeAsync(
                 OpenIdConnectDefaults.AuthenticationScheme,
-                new AuthenticationProperties { RedirectUri = "/" });
+                new AuthenticationProperties { RedirectUri = pathBase + "/" });
         });
 
 
