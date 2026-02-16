@@ -21,3 +21,20 @@
     .blazor-error-boundary::after {
         content: "An error has occurred."
     }
+
+/* Login page */
+.login-page {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.form-signin {
+    max-width: 380px;
+    padding: 1rem;
+}
+
+.login-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+}
