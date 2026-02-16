@@ -25,6 +25,8 @@ public partial class AttendanceContext : DbContext
 
     public virtual DbSet<社員> 社員s { get; set; }
 
+    public virtual DbSet<通勤手当> 通勤手当s { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -73,6 +75,15 @@ public partial class AttendanceContext : DbContext
             entity.HasKey(e => e.社員番号).HasName("社員_pkey");
 
             entity.HasOne(d => d.グループコードNavigation).WithMany(p => p.社員s).HasConstraintName("社員_グループコード_fkey");
+        });
+
+        modelBuilder.Entity<通勤手当>(entity =>
+        {
+            entity.HasKey(e => new { e.社員番号, e.対象年月, e.日付 }).HasName("通勤手当_pkey");
+
+            entity.HasOne(d => d.社員番号Navigation).WithMany(p => p.通勤手当s)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("通勤手当_社員番号_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

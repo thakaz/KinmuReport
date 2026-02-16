@@ -71,6 +71,7 @@
                             <th class="text-end">残業計</th>
                             <th class="text-end">深夜計</th>
                             <th class="text-end">合計</th>
+                            <th class="text-end">通勤費</th>
                             <th>状態</th>
                         </tr>
                     </thead>
@@ -84,6 +85,7 @@
                                 <td class="text-end">@s.残業計?.ToString("0.00")</td>
                                 <td class="text-end">@s.深夜計?.ToString("0.00")</td>
                                 <td class="text-end">@s.合計?.ToString("0.00")</td>
+                                <td class="text-end">@s.通勤費計?.ToString("N0")</td>
                                 <td>
                                     @if (s.提出済み)
                                     {
@@ -104,6 +106,7 @@
                             <td class="text-end">@monthlySummaries.Sum(s => s.残業計 ?? 0).ToString("0.00")</td>
                             <td class="text-end">@monthlySummaries.Sum(s => s.深夜計 ?? 0).ToString("0.00")</td>
                             <td class="text-end">@monthlySummaries.Sum(s => s.合計 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@monthlySummaries.Sum(s => s.通勤費計 ?? 0).ToString("N0")</td>
                             <td></td>
                         </tr>
                     </tfoot>
@@ -179,6 +182,11 @@
             .Where(u => u.社員番号 == selectedEmployeeId && months.Contains(u.対象年月))
             .ToListAsync();
 
+        // 通勤手当データ
+        var commuteRecords = await DbContext.通勤手当s
+            .Where(k => k.社員番号 == selectedEmployeeId && months.Contains(k.対象年月))
+            .ToListAsync();
+
         monthlySummaries = months.Select(ym =>
         {
             var 年 = ym.GetYear();
@@ -205,6 +213,7 @@
             }
 
             var upl = uploads.FirstOrDefault(u => u.対象年月 == ym);
+            var commuteFiltered = commuteRecords.Where(k => k.対象年月 == ym).ToList();
 
             return new MonthlySummary
             {
@@ -214,6 +223,7 @@
                 残業計 = filtered.Any() ? filtered.Sum(k => k.残業時間 ?? 0) : null,
                 深夜計 = filtered.Any() ? filtered.Sum(k => k.深夜残業時間 ?? 0) : null,
                 合計 = filtered.Any() ? filtered.Sum(k => k.合計時間 ?? 0) : null,
+                通勤費計 = commuteFiltered.Any() ? commuteFiltered.Sum(k => k.金額 ?? 0) : null,
                 提出済み = upl != null
             };
         }).ToList();
@@ -232,6 +242,7 @@
         public decimal? 残業計 { get; set; }
         public decimal? 深夜計 { get; set; }
         public decimal? 合計 { get; set; }
+        public decimal? 通勤費計 { get; set; }
         public bool 提出済み { get; set; }
     }
 }

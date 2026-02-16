@@ -58,7 +58,10 @@ public class Program
             builder.Configuration.GetSection("App"));
         builder.Services.Configure<ExcelParseSettings>(
             builder.Configuration.GetSection("ExcelParse"));
+        builder.Services.Configure<CommuteParseSettings>(
+            builder.Configuration.GetSection("CommuteParse"));
         builder.Services.AddScoped<ExcelParseService>();
+        builder.Services.AddScoped<CommuteParseService>();
         builder.Services.AddScoped<LockService>();
 
         builder.Services.AddSingleton<SharePointService>();

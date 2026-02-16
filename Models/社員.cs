@@ -47,4 +47,7 @@ public partial class 社員
 
     [InverseProperty("社員番号Navigation")]
     public virtual ICollection<勤怠> 勤怠s { get; set; } = new List<勤怠>();
+
+    [InverseProperty("社員番号Navigation")]
+    public virtual ICollection<通勤手当> 通勤手当s { get; set; } = new List<通勤手当>();
 }
