@@ -30,15 +30,31 @@
                 <i class="bi bi-person-lines-fill me-2"></i> 個人年間サマリー
             </NavLink>
         </li>
-		@*
+
         <AuthorizeView Roles="管理者">
+            <li class="nav-item mt-3">
+                <span class="nav-link text-white-50 small py-1">管理</span>
+            </li>
             <li class="nav-item">
-                <NavLink class="nav-link text-white" href="admin">
-                    <i class="bi bi-gear-fill me-2"></i> マスタ管理
+                <NavLink class="nav-link text-white" href="admin/users">
+                    <i class="bi bi-people me-2"></i> ユーザー管理
+                </NavLink>
+            </li>
+            <li class="nav-item">
+                <NavLink class="nav-link text-white" href="admin/groups">
+                    <i class="bi bi-diagram-3 me-2"></i> グループ管理
                 </NavLink>
             </li>
         </AuthorizeView>
-		*@
+
+        <li class="nav-item mt-3">
+            <span class="nav-link text-white-50 small py-1">設定</span>
+        </li>
+        <li class="nav-item">
+            <NavLink class="nav-link text-white" href="settings/password">
+                <i class="bi bi-key me-2"></i> パスワード変更
+            </NavLink>
+        </li>
     </ul>
 
     <hr class="my-0 border-secondary">
