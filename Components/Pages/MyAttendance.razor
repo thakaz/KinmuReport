@@ -23,7 +23,7 @@
                 @{
                     var currentFiscalYear = YearMonthHelper.GetCurrentFiscalYear();
                 }
-                <select class="form-select" @bind="selectedYear">
+                <select class="form-select" @bind="selectedYear" @bind:after="Search">
                     @for (int y = currentFiscalYear; y >= currentFiscalYear - 2; y--)
                     {
                         <option value="@y">@y 年度</option>
@@ -32,24 +32,25 @@
             </div>
             <div class="col-auto">
                 <label class="form-label">締め日</label>
-                <span class="form-control-plaintext">@appSettings.ClosingDayLabel</span>
+                <select class="form-select" @bind="selectedClosingDay" @bind:after="Search">
+                    <option value="@appSettings.ClosingDay">@appSettings.ClosingDayLabel</option>
+                    @if (appSettings.ClosingDay != 0)
+                    {
+                        <option value="0">月末締め</option>
+                    }
+                </select>
             </div>
-            <div class="col-auto">
-                <button class="btn btn-primary" @onclick="Search">
-                    <i class="bi bi-search me-1"></i>検索
-                </button>
-            </div>
-
             <AuthorizeView Roles="管理者,グループ管理者">
-    <div class="col-auto">
-        <label class="form-label">社員</label>
-        <select class="form-select" @bind="selectedEmployeeId">            
-            @foreach(var emp in visibleEmployees){                
-            <option value ="@emp.社員番号">@emp.社員名</option>            
-            }
-        </select>
-    </div>
-</AuthorizeView>
+                <div class="col-auto">
+                    <label class="form-label">社員</label>
+                    <select class="form-select" @bind="selectedEmployeeId" @bind:after="Search">
+                        @foreach (var emp in visibleEmployees)
+                        {
+                            <option value="@emp.社員番号">@emp.社員名</option>
+                        }
+                    </select>
+                </div>
+            </AuthorizeView>
 
         </div>
     </div>
@@ -120,6 +121,7 @@
 
     // 年度計算: 4月始まりなので、1-3月は前年度
     int selectedYear = YearMonthHelper.GetCurrentFiscalYear();
+    int selectedClosingDay;
     string currentUserId = "";
 
 
@@ -139,6 +141,7 @@
 
         currentUserId = authState.User.FindFirst(ClaimNames.EmployeeId)?.Value ?? "";
 		selectedEmployeeId = currentUserId;
+        selectedClosingDay = appSettings.ClosingDay;
 
         visibleEmployees = currentRole switch
         {
@@ -156,7 +159,7 @@
 
     async Task Search()
     {
-        var closingDay = appSettings.ClosingDay;
+        var closingDay = selectedClosingDay;
 
         // 12ヶ月分の枠を生成（4月始まり）
         var months = Enumerable.Range(0, 12)

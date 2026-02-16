@@ -1,0 +1,290 @@
+@page "/admin/users"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using KinmuReport.Models
+@attribute [Authorize(Roles = "管理者")]
+@inject AttendanceContext DbContext
+
+<h3><i class="bi bi-people me-2"></i>ユーザー管理</h3>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    var alertClass = isError ? "alert-danger" : "alert-success";
+    <div class="alert @alertClass alert-dismissible fade show" role="alert">
+        @message
+        <button type="button" class="btn-close" @onclick="() => message = null"></button>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-plus-circle me-1"></i>
+        @(isEditing ? "ユーザー編集" : "新規ユーザー追加")
+    </div>
+    <div class="card-body">
+        <EditForm Model="editModel" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">社員番号 <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="editModel.社員番号"
+                               disabled="@isEditing" placeholder="E001" />
+                    <ValidationMessage For="() => editModel.社員番号" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">社員名 <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="editModel.社員名"
+                               placeholder="山田 太郎" />
+                    <ValidationMessage For="() => editModel.社員名" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">ログインID <span class="text-danger">*</span></label>
+                    <InputText class="form-control" @bind-Value="editModel.ログインid"
+                               placeholder="yamada" />
+                    <ValidationMessage For="() => editModel.ログインid" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">グループ</label>
+                    <InputSelect class="form-select" @bind-Value="editModel.グループコード">
+                        <option value="">-- 未所属 --</option>
+                        @if (groups != null)
+                        {
+                            @foreach (var g in groups)
+                            {
+                                <option value="@g.グループコード">@g.グループ名</option>
+                            }
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">権限 <span class="text-danger">*</span></label>
+                    <InputSelect class="form-select" @bind-Value="editModel.権限">
+                        <option value="@Roles.General">@Roles.General</option>
+                        <option value="@Roles.GroupAdmin">@Roles.GroupAdmin</option>
+                        <option value="@Roles.Admin">@Roles.Admin</option>
+                    </InputSelect>
+                </div>
+                @if (!isEditing)
+                {
+                    <div class="col-md-3">
+                        <label class="form-label">初期パスワード <span class="text-danger">*</span></label>
+                        <InputText type="password" class="form-control" @bind-Value="initialPassword"
+                                   placeholder="8文字以上" />
+                        @if (!string.IsNullOrEmpty(initialPassword) && initialPassword.Length < 8)
+                        {
+                            <div class="text-danger small">8文字以上で入力してください</div>
+                        }
+                    </div>
+                }
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2"
+                            disabled="@(!isEditing && (string.IsNullOrEmpty(initialPassword) || initialPassword.Length < 8))">
+                        <i class="bi bi-check-lg me-1"></i>@(isEditing ? "更新" : "追加")
+                    </button>
+                    @if (isEditing)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CancelEdit">
+                            キャンセル
+                        </button>
+                    }
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list-ul me-1"></i>ユーザー一覧
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>社員番号</th>
+                        <th>社員名</th>
+                        <th>ログインID</th>
+                        <th>グループ</th>
+                        <th>権限</th>
+                        <th style="width: 100px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (users == null)
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">読み込み中...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    else if (!users.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">ユーザーがいません</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var u in users)
+                        {
+                            <tr>
+                                <td>@u.社員番号</td>
+                                <td>@u.社員名</td>
+                                <td>@u.ログインid</td>
+                                <td>@(u.グループコードNavigation?.グループ名 ?? "-")</td>
+                                <td>
+                                    @if (u.権限 == Roles.Admin)
+                                    {
+                                        <span class="badge bg-danger">@u.権限</span>
+                                    }
+                                    else if (u.権限 == Roles.GroupAdmin)
+                                    {
+                                        <span class="badge bg-warning text-dark">@u.権限</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">@u.権限</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button class="btn btn-outline-primary btn-sm" @onclick="() => StartEdit(u)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<社員>? users;
+    private List<グループ>? groups;
+    private 社員 editModel = new() { 権限 = Roles.General };
+    private string initialPassword = "";
+    private bool isEditing = false;
+    private string? message;
+    private bool isError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        users = await DbContext.社員s
+            .Include(u => u.グループコードNavigation)
+            .OrderBy(u => u.社員番号)
+            .ToListAsync();
+
+        groups = await DbContext.グループs
+            .OrderBy(g => g.グループコード)
+            .ToListAsync();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            // 追跡済みエンティティをクリア（連続編集時の競合を防止）
+            DbContext.ChangeTracker.Clear();
+
+            if (isEditing)
+            {
+                var existing = await DbContext.社員s.FindAsync(editModel.社員番号);
+                if (existing != null)
+                {
+                    // ログインIDの重複チェック（自分以外）
+                    if (await DbContext.社員s.AnyAsync(u =>
+                        u.ログインid == editModel.ログインid && u.社員番号 != editModel.社員番号))
+                    {
+                        message = "このログインIDは既に使用されています。";
+                        isError = true;
+                        return;
+                    }
+
+                    existing.社員名 = editModel.社員名;
+                    existing.ログインid = editModel.ログインid;
+                    existing.グループコード = string.IsNullOrEmpty(editModel.グループコード) ? null : editModel.グループコード;
+                    existing.権限 = editModel.権限;
+                    await DbContext.SaveChangesAsync();
+                    message = "ユーザーを更新しました。";
+                    isError = false;
+                }
+            }
+            else
+            {
+                // 社員番号の重複チェック
+                if (await DbContext.社員s.AnyAsync(u => u.社員番号 == editModel.社員番号))
+                {
+                    message = "この社員番号は既に使用されています。";
+                    isError = true;
+                    return;
+                }
+
+                // ログインIDの重複チェック
+                if (await DbContext.社員s.AnyAsync(u => u.ログインid == editModel.ログインid))
+                {
+                    message = "このログインIDは既に使用されています。";
+                    isError = true;
+                    return;
+                }
+
+                var newUser = new 社員
+                {
+                    社員番号 = editModel.社員番号,
+                    社員名 = editModel.社員名,
+                    ログインid = editModel.ログインid,
+                    グループコード = string.IsNullOrEmpty(editModel.グループコード) ? null : editModel.グループコード,
+                    権限 = editModel.権限,
+                    パスワードハッシュ = BCrypt.Net.BCrypt.HashPassword(initialPassword)
+                };
+                DbContext.社員s.Add(newUser);
+                await DbContext.SaveChangesAsync();
+                message = "ユーザーを追加しました。";
+                isError = false;
+            }
+
+            editModel = new() { 権限 = Roles.General };
+            initialPassword = "";
+            isEditing = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            message = $"エラーが発生しました: {ex.Message}";
+            isError = true;
+        }
+    }
+
+    private void StartEdit(社員 u)
+    {
+        editModel = new 社員
+        {
+            社員番号 = u.社員番号,
+            社員名 = u.社員名,
+            ログインid = u.ログインid,
+            グループコード = u.グループコード,
+            権限 = u.権限
+        };
+        isEditing = true;
+        initialPassword = "";
+        message = null;
+    }
+
+    private void CancelEdit()
+    {
+        editModel = new() { 権限 = Roles.General };
+        initialPassword = "";
+        isEditing = false;
+        message = null;
+    }
+}
