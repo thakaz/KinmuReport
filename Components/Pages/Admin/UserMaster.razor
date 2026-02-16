@@ -194,6 +194,9 @@
     {
         try
         {
+            // 追跡済みエンティティをクリア（連続編集時の競合を防止）
+            DbContext.ChangeTracker.Clear();
+
             if (isEditing)
             {
                 var existing = await DbContext.社員s.FindAsync(editModel.社員番号);

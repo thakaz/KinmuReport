@@ -134,6 +134,9 @@
     {
         try
         {
+            // 追跡済みエンティティをクリア（連続編集時の競合を防止）
+            DbContext.ChangeTracker.Clear();
+
             if (isEditing)
             {
                 var existing = await DbContext.グループs.FindAsync(editModel.グループコード);
