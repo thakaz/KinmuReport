@@ -86,6 +86,22 @@ public class Program
         var pathBase = builder.Configuration["App:PathBase"];
         if (!string.IsNullOrEmpty(pathBase))
         {
+            // URLの大文字小文字を正規化（Azure AD認証のRedirect URI対策）
+            app.Use(async (context, next) =>
+            {
+                var path = context.Request.Path.Value ?? "";
+                if (path.StartsWith(pathBase, StringComparison.OrdinalIgnoreCase) &&
+                    !path.StartsWith(pathBase, StringComparison.Ordinal))
+                {
+                    // 大文字小文字が異なる場合、正しいパスにリダイレクト
+                    var correctedPath = pathBase + path.Substring(pathBase.Length);
+                    var query = context.Request.QueryString.Value ?? "";
+                    context.Response.Redirect(correctedPath + query, permanent: false);
+                    return;
+                }
+                await next();
+            });
+
             app.UsePathBase(pathBase);
         }
 
@@ -105,6 +121,8 @@ public class Program
         }
 
         app.UseHttpsRedirection();
+
+        app.UseStaticFiles(); // 静的ファイルは認証不要
 
         app.UseAuthentication();
         app.UseAuthorization();
