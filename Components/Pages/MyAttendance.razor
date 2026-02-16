@@ -32,7 +32,13 @@
             </div>
             <div class="col-auto">
                 <label class="form-label">締め日</label>
-                <span class="form-control-plaintext">@appSettings.ClosingDayLabel</span>
+                <select class="form-select" @bind="selectedClosingDay">
+                    <option value="@appSettings.ClosingDay">@appSettings.ClosingDayLabel</option>
+                    @if (appSettings.ClosingDay != 0)
+                    {
+                        <option value="0">月末締め</option>
+                    }
+                </select>
             </div>
             <div class="col-auto">
                 <button class="btn btn-primary" @onclick="Search">
@@ -120,6 +126,7 @@
 
     // 年度計算: 4月始まりなので、1-3月は前年度
     int selectedYear = YearMonthHelper.GetCurrentFiscalYear();
+    int selectedClosingDay;
     string currentUserId = "";
 
 
@@ -139,6 +146,7 @@
 
         currentUserId = authState.User.FindFirst(ClaimNames.EmployeeId)?.Value ?? "";
 		selectedEmployeeId = currentUserId;
+        selectedClosingDay = appSettings.ClosingDay;
 
         visibleEmployees = currentRole switch
         {
@@ -156,7 +164,7 @@
 
     async Task Search()
     {
-        var closingDay = appSettings.ClosingDay;
+        var closingDay = selectedClosingDay;
 
         // 12ヶ月分の枠を生成（4月始まり）
         var months = Enumerable.Range(0, 12)
