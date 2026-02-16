@@ -37,10 +37,11 @@
                             <th class="text-end">合計</th>
                             <th>区分</th>
                             <th>備考</th>
+							<th class="text-end">通勤費</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var r in records)
+                        @foreach (var r in mergedRecords)
                         {
                             var dow = r.勤務日.ToDateTime(TimeOnly.MinValue).ToString("ddd");
                             var isWeekend = r.勤務日.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
@@ -55,17 +56,19 @@
                                 <td class="text-end">@r.合計時間?.ToString("0.00")</td>
                                 <td>@r.勤怠区分</td>
                                 <td>@r.備考</td>
+								<td class="text-end">@r.通勤費?.ToString("N0")</td>
                             </tr>
                         }
                     </tbody>
                     <tfoot class="table-light fw-bold">
                         <tr>
                             <td colspan="4">合計</td>
-                            <td class="text-end">@records.Sum(r => r.所定内時間 ?? 0).ToString("0.00")</td>
-                            <td class="text-end">@records.Sum(r => r.残業時間 ?? 0).ToString("0.00")</td>
-                            <td class="text-end">@records.Sum(r => r.深夜残業時間 ?? 0).ToString("0.00")</td>
-                            <td class="text-end">@records.Sum(r => r.合計時間 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@mergedRecords.Sum(r => r.所定内時間 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@mergedRecords.Sum(r => r.残業時間 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@mergedRecords.Sum(r => r.深夜残業時間 ?? 0).ToString("0.00")</td>
+                            <td class="text-end">@mergedRecords.Sum(r => r.合計時間 ?? 0).ToString("0.00")</td>
                             <td colspan="2"></td>
+							<td class="text-end">@mergedRecords.Sum(r => r.通勤費 ?? 0).ToString("N0")</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -90,7 +93,7 @@
     [Parameter] public int yearMonth { get; set; }
 
     KinmuReport.Models.社員? employee;
-    List<KinmuReport.Models.勤怠> records = new();
+    List<MergedRecord> mergedRecords = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -117,15 +120,51 @@
 
         employee = await DbContext.社員s.FindAsync(empId);
 
-        records = await DbContext.勤怠s
+        var records = await DbContext.勤怠s
             .Where(k => k.社員番号 == empId && k.対象年月 == yearMonth)
             .OrderBy(k => k.勤務日)
             .ToListAsync();
+
+        var commuteRecords = await DbContext.通勤手当s
+            .Where(k => k.社員番号 == empId && k.対象年月 == yearMonth)
+            .ToListAsync();
+
+        // 通勤手当を日付でDictionary化
+        var commuteByDate = commuteRecords.ToDictionary(c => c.日付, c => c.金額);
+
+        // 勤怠と通勤手当をマージ
+        mergedRecords = records.Select(r => new MergedRecord
+        {
+            勤務日 = r.勤務日,
+            出勤日時 = r.出勤日時,
+            退勤日時 = r.退勤日時,
+            所定内時間 = r.所定内時間,
+            残業時間 = r.残業時間,
+            深夜残業時間 = r.深夜残業時間,
+            合計時間 = r.合計時間,
+            勤怠区分 = r.勤怠区分,
+            備考 = r.備考,
+            通勤費 = commuteByDate.TryGetValue(r.勤務日, out var commute) ? commute : null
+        }).ToList();
     }
 
 
     void GoBack()
     {
         Navigation.NavigateTo("/attendance");
+    }
+
+    class MergedRecord
+    {
+        public DateOnly 勤務日 { get; set; }
+        public DateTime? 出勤日時 { get; set; }
+        public DateTime? 退勤日時 { get; set; }
+        public decimal? 所定内時間 { get; set; }
+        public decimal? 残業時間 { get; set; }
+        public decimal? 深夜残業時間 { get; set; }
+        public decimal? 合計時間 { get; set; }
+        public string? 勤怠区分 { get; set; }
+        public string? 備考 { get; set; }
+        public decimal? 通勤費 { get; set; }
     }
 }

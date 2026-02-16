@@ -6,6 +6,7 @@
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.Extensions.Options
 @inject ExcelParseService Parser
+@inject CommuteParseService CommuteParser
 @inject AttendanceContext Context
 @inject LockService LockService
 @inject SharePointService SharePoint
@@ -16,11 +17,26 @@
 <PageTitle>アップロード</PageTitle>
 
 <h2 class="mb-4">
-    <i class="bi bi-upload me-2"></i>勤務報告アップロード
+    <i class="bi bi-upload me-2"></i>アップロード
 </h2>
 
 <div class="card mb-4">
     <div class="card-body">
+        <h5 class="card-title">ファイル種別</h5>
+        <div class="btn-group mb-3" role="group">
+            <input type="radio" class="btn-check" name="fileType" id="fileTypeAttendance"
+                   checked="@(fileType == FileType.Attendance)" @onchange="() => OnFileTypeChanged(FileType.Attendance)">
+            <label class="btn btn-outline-primary" for="fileTypeAttendance">
+                <i class="bi bi-calendar-check me-1"></i>勤務報告
+            </label>
+
+            <input type="radio" class="btn-check" name="fileType" id="fileTypeCommute"
+                   checked="@(fileType == FileType.Commute)" @onchange="() => OnFileTypeChanged(FileType.Commute)">
+            <label class="btn btn-outline-primary" for="fileTypeCommute">
+                <i class="bi bi-train-front me-1"></i>通勤手当
+            </label>
+        </div>
+
         <h5 class="card-title">Excelファイルを選択</h5>
         <InputFile OnChange="HandleFileSelected" accept=".xlsx,.xlsm" class="form-control" />
     </div>
@@ -36,22 +52,23 @@
     </div>
 }
 
-@if (parseResult is not null)
+@* 勤務報告のプレビュー *@
+@if (attendanceResult is not null)
 {
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
-                <i class="bi bi-table me-1"></i> パース結果プレビュー
+                <i class="bi bi-table me-1"></i> 勤務報告プレビュー
             </h5>
-            <span class="badge bg-secondary">@parseResult.Value.勤怠リスト.Count 件</span>
+            <span class="badge bg-secondary">@attendanceResult.Value.勤怠リスト.Count 件</span>
         </div>
         <div class="card-body">
             <p class="mb-3">
                 <span class="badge bg-info text-dark me-2">
-                    <i class="bi bi-person me-1"></i>@parseResult.Value.社員番号
+                    <i class="bi bi-person me-1"></i>@attendanceResult.Value.社員番号
                 </span>
                 <span class="badge bg-info text-dark">
-                    <i class="bi bi-calendar me-1"></i>@年 年 @月 月
+                    <i class="bi bi-calendar me-1"></i>@attendanceResult.Value.対象年月.GetYear() 年 @attendanceResult.Value.対象年月.GetMonth() 月
                 </span>
             </p>
 
@@ -71,7 +88,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var r in parseResult.Value.勤怠リスト)
+                        @foreach (var r in attendanceResult.Value.勤怠リスト.OrderBy(x => x.勤務日))
                         {
                             <tr>
                                 <td>@r.勤務日</td>
@@ -90,7 +107,62 @@
             </div>
         </div>
         <div class="card-footer">
-            <button class="btn btn-primary" @onclick="SaveToDb">
+            <button class="btn btn-primary" @onclick="SaveAttendanceToDb">
+                <i class="bi bi-database-fill-add me-1"></i> DB保存
+            </button>
+        </div>
+    </div>
+}
+
+@* 通勤手当のプレビュー *@
+@if (commuteResult is not null)
+{
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-train-front me-1"></i> 通勤手当プレビュー
+            </h5>
+            <span class="badge bg-secondary">@commuteResult.Value.通勤手当リスト.Count 件</span>
+        </div>
+        <div class="card-body">
+            <p class="mb-3">
+                <span class="badge bg-info text-dark me-2">
+                    <i class="bi bi-person me-1"></i>@commuteResult.Value.社員番号
+                </span>
+                <span class="badge bg-info text-dark me-2">
+                    <i class="bi bi-calendar me-1"></i>@commuteResult.Value.対象年月.GetYear() 年 @commuteResult.Value.対象年月.GetMonth() 月
+                </span>
+                <span class="badge bg-success">
+                    <i class="bi bi-currency-yen me-1"></i>合計 @commuteResult.Value.通勤手当リスト.Sum(x => x.金額 ?? 0).ToString("N0") 円
+                </span>
+            </p>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-sm align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>日付</th>
+                            <th>経路NO</th>
+                            <th class="text-end">金額</th>
+                            <th>備考</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in commuteResult.Value.通勤手当リスト.OrderBy(x => x.日付))
+                        {
+                            <tr>
+                                <td>@r.日付</td>
+                                <td>@r.経路NO</td>
+                                <td class="text-end">@r.金額?.ToString("N0")</td>
+                                <td>@r.備考</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button class="btn btn-primary" @onclick="SaveCommuteToDb">
                 <i class="bi bi-database-fill-add me-1"></i> DB保存
             </button>
         </div>
@@ -98,11 +170,12 @@
 }
 
 @code {
-    private (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト)? parseResult;
-    private string? message;
+    private enum FileType { Attendance, Commute }
+    private FileType fileType = FileType.Attendance;
 
-    private int 年 => parseResult.HasValue ? parseResult.Value.対象年月.GetYear() : 0;
-    private int 月 => parseResult.HasValue ? parseResult.Value.対象年月.GetMonth() : 0;
+    private (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト)? attendanceResult;
+    private (string 社員番号, int 対象年月, List<通勤手当> 通勤手当リスト)? commuteResult;
+    private string? message;
 
     string currentUserId = "";
 
@@ -119,11 +192,20 @@
         currentUserId = user.FindFirst(ClaimNames.EmployeeId)?.Value ?? "";
     }
 
-
+    private void OnFileTypeChanged(FileType newType)
+    {
+        fileType = newType;
+        attendanceResult = null;
+        commuteResult = null;
+        message = null;
+    }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         message = null;
+        attendanceResult = null;
+        commuteResult = null;
+
         try
         {
             using var stream = e.File.OpenReadStream(maxAllowedSize: AppSettingsOptions.Value.MaxUploadSizeBytes);
@@ -133,22 +215,28 @@
 			uploadedFileName = e.File.Name;
 
             ms.Position = 0;
-            parseResult = Parser.ParseExcel(ms);
+
+            if (fileType == FileType.Attendance)
+            {
+                attendanceResult = Parser.ParseExcel(ms);
+            }
+            else
+            {
+                commuteResult = CommuteParser.ParseExcel(ms, currentUserId);
+            }
         }
         catch (Exception ex)
         {
             message = $"エラー: {ex.Message}";
-            parseResult = null;
         }
     }
 
-    private async Task SaveToDb()
+    private async Task SaveAttendanceToDb()
     {
-
-        if (parseResult is null || uploadedFileBytes is null) return;
+        if (attendanceResult is null || uploadedFileBytes is null) return;
 
         // ロックチェック
-        var lockRecord = await LockService.GetLock(parseResult?.社員番号 ?? "", parseResult?.対象年月 ?? 0);
+        var lockRecord = await LockService.GetLock(attendanceResult.Value.社員番号, attendanceResult.Value.対象年月);
         if (lockRecord != null && lockRecord.ロック者番号 != currentUserId)
         {
             message = $"この期間は {lockRecord.ロック者番号Navigation?.社員名 ?? lockRecord.ロック者番号} がロック中のためアップロードできません。";
@@ -157,8 +245,7 @@
 
         try
         {
-            var (社員番号, 対象年月, 勤怠リスト) = parseResult!.Value;
-
+            var (社員番号, 対象年月, 勤怠リスト) = attendanceResult.Value;
 
             await Context.勤怠s
                 .Where(k => k.社員番号 == 社員番号 && k.対象年月 == 対象年月)
@@ -198,7 +285,34 @@
             await Context.SaveChangesAsync();
 
             message = $"{勤怠リスト.Count}件を保存しました。";
-            parseResult = null;
+            attendanceResult = null;
+        }
+        catch (Exception ex)
+        {
+            message = $"保存エラー: {ex.Message}";
+        }
+    }
+
+    private async Task SaveCommuteToDb()
+    {
+        if (commuteResult is null) return;
+
+        try
+        {
+            var (社員番号, 対象年月, 通勤手当リスト) = commuteResult.Value;
+
+            // 既存データを削除
+            await Context.通勤手当s
+                .Where(k => k.社員番号 == 社員番号 && k.対象年月 == 対象年月)
+                .ExecuteDeleteAsync();
+
+            Context.ChangeTracker.Clear();
+
+            Context.通勤手当s.AddRange(通勤手当リスト);
+            await Context.SaveChangesAsync();
+
+            message = $"通勤手当 {通勤手当リスト.Count}件を保存しました。";
+            commuteResult = null;
         }
         catch (Exception ex)
         {
