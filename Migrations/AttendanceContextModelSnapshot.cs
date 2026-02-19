@@ -132,6 +132,37 @@ namespace KinmuReport.Migrations
                     b.ToTable("勤怠");
                 });
 
+            modelBuilder.Entity("KinmuReport.Models.監査ログ", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("テーブル名")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("レコードキー")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("変更内容")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("操作日時")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("操作種別")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("操作者")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("監査ログ");
+                });
+
             modelBuilder.Entity("KinmuReport.Models.社員", b =>
                 {
                     b.Property<string>("社員番号")

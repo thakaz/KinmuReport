@@ -27,6 +27,7 @@ public partial class AttendanceContext : DbContext
 
     public virtual DbSet<通勤手当> 通勤手当s { get; set; }
 
+    public virtual DbSet<監査ログ> 監査ログs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

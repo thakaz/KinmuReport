@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KinmuReport.Migrations
 {
     [DbContext(typeof(AttendanceContext))]
-    [Migration("20260213093324_InitialCreate")]
+    [Migration("20260219041755_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -135,6 +135,37 @@ namespace KinmuReport.Migrations
                     b.ToTable("勤怠");
                 });
 
+            modelBuilder.Entity("KinmuReport.Models.監査ログ", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("テーブル名")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("レコードキー")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("変更内容")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("操作日時")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("操作種別")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("操作者")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("監査ログ");
+                });
+
             modelBuilder.Entity("KinmuReport.Models.社員", b =>
                 {
                     b.Property<string>("社員番号")
@@ -177,6 +208,35 @@ namespace KinmuReport.Migrations
                         .IsUnique();
 
                     b.ToTable("社員");
+                });
+
+            modelBuilder.Entity("KinmuReport.Models.通勤手当", b =>
+                {
+                    b.Property<string>("社員番号")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("対象年月")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("日付")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("備考")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("経路NO")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("金額")
+                        .HasPrecision(10)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("社員番号", "対象年月", "日付")
+                        .HasName("通勤手当_pkey");
+
+                    b.ToTable("通勤手当");
                 });
 
             modelBuilder.Entity("KinmuReport.Models.アップロード履歴", b =>
@@ -230,6 +290,17 @@ namespace KinmuReport.Migrations
                     b.Navigation("グループコードNavigation");
                 });
 
+            modelBuilder.Entity("KinmuReport.Models.通勤手当", b =>
+                {
+                    b.HasOne("KinmuReport.Models.社員", "社員番号Navigation")
+                        .WithMany("通勤手当s")
+                        .HasForeignKey("社員番号")
+                        .IsRequired()
+                        .HasConstraintName("通勤手当_社員番号_fkey");
+
+                    b.Navigation("社員番号Navigation");
+                });
+
             modelBuilder.Entity("KinmuReport.Models.グループ", b =>
                 {
                     b.Navigation("社員s");
@@ -244,6 +315,8 @@ namespace KinmuReport.Migrations
                     b.Navigation("ロック社員番号Navigations");
 
                     b.Navigation("勤怠s");
+
+                    b.Navigation("通勤手当s");
                 });
 #pragma warning restore 612, 618
         }
