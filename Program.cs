@@ -1,10 +1,11 @@
-using KinmuReport.Components;
+﻿using KinmuReport.Components;
 using KinmuReport.Services;
 using Microsoft.EntityFrameworkCore;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Identity.Web;
+using KinmuReport.Models;
 
 namespace KinmuReport;
 
@@ -26,12 +27,19 @@ public class Program
         // Razor Pages（ログイン・ログアウト用）
         builder.Services.AddRazorPages();
 
+
+        // Interceptor を DI に登録
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<AuditInterceptor>();
+
         // DB
-        builder.Services.AddDbContext<KinmuReport.Models.AttendanceContext>(
-            options => options.UseSqlite(
+        builder.Services.AddDbContext<AttendanceContext>((serviceProvider, options)
+            => options.UseSqlite(
                 builder.Configuration.GetConnectionString("AttendanceContext") ??
                 "Data Source=Data/kinmu.db"
-            ));
+            ).AddInterceptors(serviceProvider.GetRequiredService<AuditInterceptor>())
+
+            );
 
         // 認証・認可
         builder.Services.AddAuthentication(options =>
