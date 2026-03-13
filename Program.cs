@@ -71,6 +71,7 @@ public class Program
         builder.Services.AddScoped<ExcelParseService>();
         builder.Services.AddScoped<CommuteParseService>();
         builder.Services.AddScoped<LockService>();
+        builder.Services.AddScoped<BulkUploadService>();
 
         builder.Services.AddSingleton<SharePointService>();
 

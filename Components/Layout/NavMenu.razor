@@ -31,6 +31,17 @@
             </NavLink>
         </li>
 
+        <AuthorizeView Roles="管理者,グループ管理者">
+            <li class="nav-item mt-3">
+                <span class="nav-link text-white-50 small py-1">グループ管理</span>
+            </li>
+            <li class="nav-item">
+                <NavLink class="nav-link text-white" href="group-upload">
+                    <i class="bi bi-cloud-upload me-2"></i> 一括アップロード
+                </NavLink>
+            </li>
+        </AuthorizeView>
+
         <AuthorizeView Roles="管理者">
             <li class="nav-item mt-3">
                 <span class="nav-link text-white-50 small py-1">管理</span>

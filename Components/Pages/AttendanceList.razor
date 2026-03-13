@@ -85,7 +85,7 @@
 
                                 <td>@if (s.提出済み)
                                     {
-                                        <a href="/api/download/@s.社員番号/@selectedYearMonth" class="btn btn-outline-primary btn-sm" @onclick:stopPropagation="true">
+                                        <a href="api/download/@s.社員番号/@selectedYearMonth" class="btn btn-outline-primary btn-sm" @onclick:stopPropagation="true">
                                             <i class="bi bi-download"></i>    
                                         </a>
                                     }
@@ -205,7 +205,7 @@
 
     void GoToDetail(string 社員番号)
     {
-        Navigation.NavigateTo($"/attendance/{社員番号}/{selectedYearMonth}");
+        Navigation.NavigateTo($"attendance/{社員番号}/{selectedYearMonth}");
     }
 
     class EmployeeSummary

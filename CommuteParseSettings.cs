@@ -16,6 +16,7 @@ public class CommuteParseSettings
         public string 年 { get; set; } = "AM1";
         public string 月 { get; set; } = "AS1";
         public string 社員番号 { get; set; } = "AX1";
+        public string 社員名 { get; set; } = "W3";
     }
 
     public class DataColumns
