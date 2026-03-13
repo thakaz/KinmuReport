@@ -18,8 +18,8 @@ public class CommuteParseService
     /// </summary>
     /// <param name="stream">Excelファイルのストリーム</param>
     /// <param name="fallback社員番号">Excel内に社員番号がない場合に使用する社員番号</param>
-    /// <returns>社員番号、対象年月、通勤手当リスト</returns>
-    public (string 社員番号, int 対象年月, List<通勤手当> 通勤手当リスト) ParseExcel(Stream stream, string? fallback社員番号 = null)
+    /// <returns>社員番号、社員名、対象年月、通勤手当リスト</returns>
+    public (string 社員番号, string? 社員名, int 対象年月, List<通勤手当> 通勤手当リスト) ParseExcel(Stream stream, string? fallback社員番号 = null)
     {
         using var workbook = new XLWorkbook(stream);
         var sheet = workbook.Worksheet(_settings.SheetName);
@@ -28,6 +28,10 @@ public class CommuteParseService
         var 年 = sheet.Cell(_settings.Header.年).GetValue<int>();
         var 月 = sheet.Cell(_settings.Header.月).GetValue<int>();
         var 対象年月 = 年 * 100 + 月;
+
+        // 社員名を取得
+        var 社員名Cell = sheet.Cell(_settings.Header.社員名);
+        var 社員名 = 社員名Cell.IsEmpty() ? null : NormalizeString(社員名Cell.GetString());
 
         // 社員番号（空欄ならfallbackを使用）
         var 社員番号Cell = sheet.Cell(_settings.Header.社員番号);
@@ -57,7 +61,22 @@ public class CommuteParseService
             }
         }
 
-        return (社員番号, 対象年月, 通勤手当リスト);
+        return (社員番号, 社員名, 対象年月, 通勤手当リスト);
+    }
+
+    /// <summary>
+    /// 文字列を正規化（全角→半角、トリム）
+    /// </summary>
+    private static string NormalizeString(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        // 全角スペースを半角スペースに変換してトリム
+        var result = input
+            .Replace('　', ' ')  // 全角スペース→半角
+            .Trim();
+
+        return result;
     }
 
     private static 通勤手当? ParseRow(IXLWorksheet sheet, int row, CommuteParseSettings.DataColumns cols, string 社員番号, int 対象年月)

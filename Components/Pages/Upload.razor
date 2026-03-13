@@ -174,7 +174,7 @@
     private FileType fileType = FileType.Attendance;
 
     private (string 社員番号, int 対象年月, List<勤怠> 勤怠リスト)? attendanceResult;
-    private (string 社員番号, int 対象年月, List<通勤手当> 通勤手当リスト)? commuteResult;
+    private (string 社員番号, string? 社員名, int 対象年月, List<通勤手当> 通勤手当リスト)? commuteResult;
     private string? message;
 
     string currentUserId = "";
@@ -299,7 +299,7 @@
 
         try
         {
-            var (社員番号, 対象年月, 通勤手当リスト) = commuteResult.Value;
+            var (社員番号, _, 対象年月, 通勤手当リスト) = commuteResult.Value;
 
             // 既存データを削除
             await Context.通勤手当s
