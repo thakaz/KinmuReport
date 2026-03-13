@@ -12,7 +12,7 @@ public class LogoutModel : PageModel
     public async Task<IActionResult> OnGetAsync()
     {
         await HttpContext.SignOutAsync("Cookies");
-        return Redirect("/login");
+        return LocalRedirect("~/login");
     }
 
 }
