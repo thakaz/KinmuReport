@@ -45,6 +45,6 @@ public class LoginModel : PageModel
 
         await HttpContext.SignInAsync("Cookies", principal);
 
-        return Redirect("/");
+        return LocalRedirect("~/");
     }
 }
